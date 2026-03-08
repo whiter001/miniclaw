@@ -1,2 +1,285 @@
-# miniclaw
-minimax claw
+# MiniClaw
+
+用 V 语言复刻 PicoClaw 的实用子集，直接面向 MiniMax + QQ 场景。
+
+当前策略不是全量追平 PicoClaw，而是先做一个能稳定跑起来、能在 QQ 上收发消息、能调用 MiniMax 完成多轮工具型 Agent 任务的最小可用版本。
+
+## 当前进度
+
+已落地的骨架能力：
+
+- 最小 V 项目结构已建立。
+- `miniclaw onboard` 可生成默认配置和 workspace。
+- `miniclaw status` 可检查当前配置状态。
+- `miniclaw agent -p "..."` 在配置 API Key 后可直接调用 MiniMax 文本接口。
+- `miniclaw agent` 已支持最小工具循环，可调用 `list_dir`、`read_file`、`write_file`、`exec`、`grep_search`。
+- 会话已自动落盘到 workspace 下的 `sessions/`。
+- 已增加基础自动化测试，并完成真实模型与工具链路验证。
+- `--workspace` 命令行参数已支持覆盖默认 workspace，便于直接作用于当前项目目录。
+- `miniclaw gateway --once` 已支持真实 QQ bootstrap：获取 access token、读取 bot profile、落盘状态。
+- `miniclaw gateway` 已支持启动本地 QQ webhook 服务，完成回调验证签名和事件 ACK。
+- webhook 收到 QQ 单聊/群聊消息事件后，已具备调用 MiniClaw 并尝试被动回复的代码链路。
+
+当前可直接验证：
+
+```bash
+./build.sh
+v test src
+./miniclaw onboard
+./miniclaw status
+./miniclaw agent -p "hello"
+./miniclaw agent --workspace . -p "请使用工具读取 README.md 的第一行，并只输出这一行。"
+./miniclaw agent --workspace . -p "必须使用 exec 工具执行命令 printf 'exec-smoke'，并且只输出命令结果本身。"
+./miniclaw gateway --once
+./miniclaw gateway
+```
+
+## 配置示例
+
+仓库内提供了一份可直接参考的示例配置文件：[examples/miniclaw.config.example](examples/miniclaw.config.example)。
+
+推荐用法：
+
+```bash
+mkdir -p ~/.config/miniclaw
+cp examples/miniclaw.config.example ~/.config/miniclaw/config
+```
+
+然后只在本机补齐你自己的敏感字段，不要把真实值写回仓库。
+
+常用字段说明：
+
+- `api_key`: MiniMax API Key，本地填写。
+- `api_url`: 默认使用 MiniMax Anthropic 兼容接口。
+- `model`: 默认是 `MiniMax-M2.5`。
+- `qq_app_id`: QQ 机器人 AppID，本地填写。
+- `qq_token`: QQ 机器人令牌，本地填写。
+- `qq_app_secret`: QQ 机器人密钥，本地填写。
+- `qq_webhook_path`: 消息事件回调路径。
+- `qq_auth_callback_path`: 网页授权回调路径。
+- `qq_allow_users`: 允许触发机器人的单聊用户列表，多个值用英文逗号分隔；留空表示不限制。
+- `qq_allow_groups`: 允许触发机器人的群列表，多个值用英文逗号分隔；留空表示不限制。
+- `qq_processing_text`: 长任务开始处理时先回复的占位文案。
+
+## 目标边界
+
+参考 PicoClaw，MiniClaw 第一阶段只覆盖下面这些能力：
+
+- 单机单二进制运行。
+- 本地 workspace + session 持久化。
+- MiniMax 作为唯一默认模型提供商。
+- QQ 作为唯一默认消息通道。
+- 基础工具调用：读文件、写文件、列目录、执行命令、搜索文本。
+- 一轮或多轮工具循环，而不是单纯问答。
+- 最小配置、最小部署、最小依赖。
+
+明确不在第一阶段做的内容：
+
+- 多通道并发接入，例如 Telegram、Discord、LINE、微信企业号。
+- 多提供商抽象到完全插件化。
+- Docker、Web 控制台、MCP 市场、复杂权限系统。
+- 语音、图像、视频、音乐等多模态能力。
+- 分布式任务队列、远程数据库、集群化部署。
+
+## 为什么先做 MiniMax + QQ
+
+这条路线最符合当前资源约束：
+
+- 你只有 MiniMax API Key，可以直接落地模型能力。
+- 你只有 QQ 账号，优先做 QQ 才能最快验证真实使用链路。
+- MiniMax 官方支持 Anthropic 兼容和 OpenAI 兼容接口，而 minimax-v 已经走通 Anthropic messages 路径，可以直接复用设计和部分实现思路。
+- PicoClaw 的 provider 架构本质上也是协议族路由，不必一开始就复制它完整的多厂商矩阵。
+
+## 对标 PicoClaw 时应该保留的核心能力
+
+如果目标是“功能上像 PicoClaw”，真正有价值的是下面几块，而不是 README 里所有展示项：
+
+1. Agent loop
+   模型返回 tool use，本地执行工具，再把结果回灌模型，直到任务完成。
+
+2. Workspace 模型
+   所有会话、记忆、状态、计划、定时任务都围绕一个本地 workspace 目录组织。
+
+3. Channel adapter
+   QQ 只负责把外部消息转换成统一的 inbound event，再把 agent 输出发回去。
+
+4. Config-driven provider
+   模型提供商尽量走配置而不是硬编码，让后续加 OpenAI-compatible provider 成本低。
+
+5. 安全边界
+   工具默认限制在 workspace 内，危险命令要显式拦截。
+
+6. 最小运维复杂度
+   单机、单二进制、少依赖、低内存。
+
+## 建议的实现路线
+
+### 路线选择
+
+不要从零写一个新的 Agent runtime。优先复用 minimax-v 已经验证过的能力边界：
+
+- 配置加载。
+- MiniMax Anthropic API 调用。
+- 消息历史与工具循环。
+- 本地工具执行与危险命令拦截。
+- session / notes / todo / cron 等可拆分模块。
+
+更合理的做法是：
+
+- 把 minimax-v 看成 runtime base。
+- 在 MiniClaw 内补上 PicoClaw 风格的 workspace、gateway、channel、配置模型。
+- 第一阶段先只实现 QQ channel。
+
+### 推荐架构
+
+```text
+CLI / daemon entry
+  -> config loader
+  -> workspace bootstrap
+  -> provider registry
+  -> agent service
+  -> tool executor
+  -> session store
+  -> qq gateway adapter
+```
+
+推荐模块拆分：
+
+- src/main.v: 入口与子命令分发。
+- src/config.v: 配置结构、默认值、环境变量覆盖。
+- src/workspace.v: 初始化 sessions、memory、state、cron 等目录。
+- src/minimax_provider.v: MiniMax 适配器，先走 Anthropic 兼容接口。
+- src/agent/\*.v: 对话状态、tool loop、命令执行策略。
+- src/tools/\*.v: 文件、shell、search、todo、notes。
+- src/channel/qq/\*.v: QQ 鉴权、收消息、发消息、事件转换。
+- src/gateway/\*.v: channel lifecycle、router、health、日志。
+- src/store/\*.v: session / state / cron 的本地持久化。
+
+## TODO Plan
+
+### Phase 0: 项目骨架
+
+- [ ] 确定是直接基于 minimax-v 改造，还是抽取其中的 client / tools / sessions 模块复用。
+- [x] 建立 MiniClaw 目录结构，避免后续把 channel、provider、agent 混在一起。
+- [x] 定义最小 CLI：onboard、agent、gateway、status。
+- [x] 约定默认 home 和 workspace 路径，例如 ~/.miniclaw 与 ~/.miniclaw/workspace。
+- [x] 设计 config 文件格式，优先 JSON 或简洁 INI，不要一开始搞复杂嵌套兼容。
+
+交付标准：能启动空程序，能生成配置和 workspace 目录。
+
+### Phase 1: MiniMax Provider 落地
+
+- [ ] 直接复用 minimax-v 当前的 Anthropic messages 调用路径。
+- [x] 抽出 MiniMaxClient 接口，屏蔽 HTTP 细节。
+- [x] 支持非流式响应，先把稳定性跑通。
+- [ ] 再补流式响应和 tool use 解析。
+- [ ] 定义统一 message schema，避免 channel 层和 provider 层耦合。
+- [x] 支持 model、api_key、api_url、max_tokens、temperature、timeout 配置项。
+- [ ] 对 MiniMax 的错误码、限流、超时做统一重试和报错包装。
+
+交付标准：CLI 模式下可以稳定完成一轮和多轮工具调用。
+
+### Phase 2: Agent Runtime 最小闭环
+
+- [ ] 搬运或重写 minimax-v 的 tool loop，保留多轮执行能力。
+- [x] 搬运或重写 minimax-v 的 tool loop，保留多轮执行能力。
+- [x] 实现最小工具集：read_file、write_file、list_dir、exec、grep_search。
+- [ ] 增加 workspace 限制与危险命令黑名单。
+- [ ] 增加 session history 持久化。
+- [ ] 增加 notes / todo 两个轻量持久化能力。
+- [ ] 增加统一 command executor，避免每个 channel 自己解析命令。
+
+交付标准：本地 agent 模式可用，具备 PicoClaw 最核心的“会做事”能力。
+
+当前状态：已达成。
+
+### Phase 3: QQ Channel MVP
+
+- [ ] 确认 QQ 开放平台接入方式：事件回调、签名校验、access token 获取、消息发送接口。
+- [ ] 定义 ChannelAdapter 接口：start、stop、handle_event、send_message。
+- [ ] 实现 QQ inbound event -> internal message 的转换。
+- [ ] 实现 internal response -> QQ message 的发送。
+- [ ] 加 allow_from 白名单。
+- [ ] 增加最小去重和幂等，避免回调重放导致重复回复。
+- [ ] 增加长任务兜底策略：先回“处理中”，后续再补发结果，避免平台超时。
+
+交付标准：QQ 上发一句话，能得到 MiniMax 回复；复杂请求能触发工具循环并回传结果。
+
+当前状态：access token、bot profile、webhook 验证签名、事件 ACK、本地事件到 MiniClaw 回复链路均已实现。真正的端到端联调仍需要一个可被 QQ 平台访问的公网 HTTPS 回调地址，或者改走 WebSocket 在线模式。
+
+### Phase 4: Gateway 与服务化运行
+
+- [ ] 实现 gateway 子命令，负责启动 QQ channel 和 agent service。
+- [ ] 把 channel 与 agent 解耦，通过内部 event bus 或简化 router 连接。
+- [ ] 增加 health/status 输出。
+- [ ] 增加基本日志，包括请求 ID、channel、session、耗时、错误。
+- [ ] 增加优雅退出和 token 缓存刷新。
+
+交付标准：可以常驻运行，不只是命令行单次问答。
+
+### Phase 5: PicoClaw 风格工作区能力
+
+- [ ] 初始化 workspace 目录结构：sessions、memory、state、cron、skills。
+- [ ] 增加 AGENTS.md、USER.md、HEARTBEAT.md 的读取约定。
+- [ ] 让 system prompt 能叠加 workspace 里的 agent instructions。
+- [ ] 增加定时任务最小实现，先支持简单 cron 或 interval。
+- [ ] 增加状态文件，记录最近 channel / peer / active session。
+
+交付标准：MiniClaw 从“能聊天的 bot”升级为“有长期上下文的个人 agent”。
+
+### Phase 6: 稳定性与可维护性
+
+- [ ] 为 provider、tools、qq adapter、session store 写单测。
+- [ ] 增加集成测试：本地 prompt -> tool call -> result。
+- [ ] 增加模拟 QQ webhook 测试。
+- [ ] 控制二进制体积与启动时间，避免为了抽象把 PicoClaw 的轻量优势做没。
+- [ ] 补文档：配置示例、QQ 接入说明、常见错误、部署说明。
+
+交付标准：项目进入可持续迭代状态。
+
+## 建议的开发优先级
+
+按实用性排序，建议这样推进：
+
+1. MiniMax CLI 单机可用。
+2. Tool loop 可用。
+3. Session / workspace 可用。
+4. QQ channel 可用。
+5. Gateway 常驻可用。
+6. Heartbeat / cron / skills 等增强项。
+
+原因很直接：如果先做 QQ 而本地 agent 不稳定，问题会被 channel 噪音掩盖，很难调试。先把本地链路打通，再挂 QQ，工程风险更低。
+
+## 第一版最小可交付范围
+
+只要下面这些做到，就已经算是“V 版 PicoClaw 实用 MVP”：
+
+- [ ] onboard 生成配置和 workspace。
+- [ ] agent 支持单次和交互模式。
+- [ ] MiniMax 支持多轮 tool use。
+- [ ] 工具支持读写文件、列目录、执行命令、搜索文本。
+- [ ] QQ 能收发文本消息。
+- [ ] session 能按用户或会话维度持久化。
+- [ ] 基本安全限制可用。
+
+这时候已经可以作为个人 QQ Agent 使用，不必等待多通道、多模态、MCP、复杂扩展系统完成。
+
+## 明确不建议现在做的事
+
+- 不要一开始照搬 PicoClaw 全部 channel。
+- 不要先做 OpenAI / Zhipu / OpenRouter 多 provider 统一层。
+- 不要先做 Docker Compose、Web 面板、插件市场。
+- 不要先做语音、图片、视频。
+- 不要先做“超通用”抽象，V 里过度抽象会把维护成本抬高。
+
+## 当前最合理的下一步
+
+如果马上开工，顺序建议固定为：
+
+1. 从 minimax-v 中抽取 config.v、client.v、tools.v、sessions.v 相关能力。
+2. 在 MiniClaw 建出最小 CLI 和 workspace bootstrap。
+3. 先跑通本地 agent 模式。
+4. 再接 QQ gateway。
+5. 最后补 cron、memory、skills。
+
+这条路线最稳，也最符合“实用为主”的要求。

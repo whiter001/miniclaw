@@ -1,0 +1,24 @@
+# MiniClaw example config
+# Copy the fields you need into ~/.config/miniclaw/config and fill sensitive values locally.
+
+home_dir=~/.miniclaw
+workspace=~/.miniclaw/workspace
+
+api_key=
+api_url=https://api.minimaxi.com/anthropic/v1/messages
+model=MiniMax-M2.5
+temperature=0.7
+max_tokens=8192
+request_timeout=120
+
+qq_app_id=
+qq_token=
+qq_app_secret=
+qq_api_base=https://api.sgroup.qq.com
+qq_webhook_host=127.0.0.1
+qq_webhook_port=8080
+qq_webhook_path=/webhook/qq
+qq_auth_callback_path=/qq-callback
+qq_allow_users=
+qq_allow_groups=
+qq_processing_text=收到，处理中，请稍候。

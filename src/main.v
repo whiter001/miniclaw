@@ -1,0 +1,85 @@
+module main
+
+import os
+
+const version = 'v0.1.0'
+
+fn main() {
+	args := os.args[1..]
+	if args.len == 0 {
+		print_help()
+		return
+	}
+
+	if args[0] == '--help' || args[0] == '-h' {
+		print_help()
+		return
+	}
+	if args[0] == '--version' {
+		println(version)
+		return
+	}
+
+	config := load_config()
+	command := args[0]
+	command_args := if args.len > 1 { args[1..] } else { []string{} }
+	mut effective_config := config
+	apply_command_config_overrides(mut effective_config, command_args)
+
+	exit(match command {
+		'onboard' {
+			run_onboard(effective_config)
+		}
+		'status' {
+			run_status(effective_config)
+		}
+		'gateway' {
+			run_gateway(effective_config, command_args)
+		}
+		'agent' {
+			run_agent(effective_config, command_args)
+		}
+		else {
+			eprintln('unknown command: ${command}')
+			print_help()
+			1
+		}
+	})
+}
+
+fn apply_command_config_overrides(mut config Config, args []string) {
+	mut index := 0
+	for index < args.len {
+		if args[index] == '--workspace' && index + 1 < args.len {
+			config.workspace = expand_home_path(args[index + 1])
+			index += 2
+			continue
+		}
+		if args[index] == '--webhook-port' && index + 1 < args.len {
+			config.qq_webhook_port = args[index + 1].int()
+			index += 2
+			continue
+		}
+		index++
+	}
+}
+
+fn print_help() {
+	println('MiniClaw ${version}')
+	println('')
+	println('Usage:')
+	println('  miniclaw onboard              Initialize config and workspace')
+	println('  miniclaw status               Show current configuration status')
+	println('  miniclaw gateway [--once] [--webhook-port PORT]   Start QQ gateway bootstrap or webhook server')
+	println('  miniclaw agent [-p PROMPT] [--workspace PATH]    Run agent')
+	println('  miniclaw --version            Show version')
+	println('')
+	println('Environment variables:')
+	println('  MINICLAW_HOME')
+	println('  MINICLAW_WORKSPACE')
+	println('  MINICLAW_API_KEY')
+	println('  MINICLAW_API_URL')
+	println('  MINICLAW_MODEL')
+	println('  MINICLAW_QQ_APP_ID')
+	println('  MINICLAW_QQ_APP_SECRET')
+}

@@ -1,0 +1,23 @@
+.DS_Store
+miniclaw
+.vmodules/
+dist/
+tmp/
+*.log
+
+# Local runtime workspace artifacts
+sessions/
+state/
+memory/
+cron/
+skills/
+USER.md
+HEARTBEAT.md
+.playwright-mcp/
+
+# Local test and verification artifacts
+tmp-tool-test.txt
+
+
+# Local session and event dumps may contain openid/access token related data
+*.jsonl
