@@ -8,12 +8,16 @@ pub mut:
 	home_dir              string
 	workspace             string
 	config_path           string
+	mcp_config_path       string
 	api_key               string
 	api_url               string
 	model                 string
 	temperature           f64
 	max_tokens            int
 	request_timeout       int
+	enable_mcp            bool
+	mcp_base_path         string
+	mcp_resource_mode     string
 	qq_app_id             string
 	qq_token              string
 	qq_app_secret         string
@@ -34,12 +38,16 @@ fn default_config() Config {
 		home_dir:              home_dir
 		workspace:             os.join_path(home_dir, 'workspace')
 		config_path:           os.join_path(os.home_dir(), '.config', 'miniclaw', 'config')
+		mcp_config_path:       os.join_path(os.home_dir(), '.config', 'miniclaw', 'mcp.json')
 		api_key:               ''
 		api_url:               'https://api.minimaxi.com/anthropic/v1/messages'
 		model:                 'MiniMax-M2.5'
 		temperature:           0.7
 		max_tokens:            8192
 		request_timeout:       120
+		enable_mcp:            false
+		mcp_base_path:         ''
+		mcp_resource_mode:     'url'
 		qq_app_id:             ''
 		qq_token:              ''
 		qq_app_secret:         ''
@@ -60,6 +68,8 @@ fn load_config() Config {
 	config.home_dir = expand_home_path(config.home_dir)
 	config.workspace = expand_home_path(config.workspace)
 	config.config_path = expand_home_path(config.config_path)
+	config.mcp_config_path = expand_home_path(config.mcp_config_path)
+	config.mcp_base_path = expand_home_path(config.mcp_base_path)
 
 	if os.exists(config.config_path) {
 		content := os.read_file(config.config_path) or { return config }
@@ -86,6 +96,8 @@ fn parse_config_content(content string, base Config) Config {
 	config.home_dir = expand_home_path(config.home_dir)
 	config.workspace = expand_home_path(config.workspace)
 	config.config_path = expand_home_path(config.config_path)
+	config.mcp_config_path = expand_home_path(config.mcp_config_path)
+	config.mcp_base_path = expand_home_path(config.mcp_base_path)
 	return config
 }
 
@@ -97,6 +109,9 @@ fn apply_config_value(mut config Config, key string, value string) {
 		}
 		'workspace' {
 			config.workspace = value
+		}
+		'mcp_config_path' {
+			config.mcp_config_path = value
 		}
 		'api_key' {
 			config.api_key = value
@@ -121,6 +136,15 @@ fn apply_config_value(mut config Config, key string, value string) {
 			if parsed := strconv.atoi(value) {
 				config.request_timeout = parsed
 			}
+		}
+		'enable_mcp' {
+			config.enable_mcp = value == 'true' || value == '1'
+		}
+		'mcp_base_path' {
+			config.mcp_base_path = value
+		}
+		'mcp_resource_mode' {
+			config.mcp_resource_mode = value
 		}
 		'qq_app_id' {
 			config.qq_app_id = value
@@ -168,6 +192,9 @@ fn apply_env_overrides(mut config Config) {
 	}
 	if value := os.getenv_opt('MINICLAW_WORKSPACE') {
 		config.workspace = expand_home_path(value)
+	}
+	if value := os.getenv_opt('MINICLAW_MCP_CONFIG_PATH') {
+		config.mcp_config_path = expand_home_path(value)
 	}
 	if value := os.getenv_opt('MINICLAW_API_KEY') {
 		config.api_key = value
@@ -228,9 +255,20 @@ fn apply_env_overrides(mut config Config) {
 			config.request_timeout = parsed
 		}
 	}
+	if value := os.getenv_opt('MINICLAW_ENABLE_MCP') {
+		config.enable_mcp = value == 'true' || value == '1'
+	}
+	if value := os.getenv_opt('MINICLAW_MCP_BASE_PATH') {
+		config.mcp_base_path = expand_home_path(value)
+	}
+	if value := os.getenv_opt('MINICLAW_MCP_RESOURCE_MODE') {
+		config.mcp_resource_mode = value
+	}
 	config.home_dir = expand_home_path(config.home_dir)
 	config.workspace = expand_home_path(config.workspace)
 	config.config_path = expand_home_path(config.config_path)
+	config.mcp_config_path = expand_home_path(config.mcp_config_path)
+	config.mcp_base_path = expand_home_path(config.mcp_base_path)
 }
 
 fn ensure_config_parent_dir(config_path string) ! {
@@ -246,7 +284,7 @@ fn write_default_config(config Config) ! {
 	// 把默认配置写入本地配置文件。
 	ensure_config_parent_dir(config.config_path)!
 	default_content :=
-		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'api_key=', 'api_url=${config.api_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}'].join('\n') +
+		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'mcp_config_path=${config.mcp_config_path}', 'api_key=', 'api_url=${config.api_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'enable_mcp=${config.enable_mcp}', 'mcp_base_path=${config.mcp_base_path}', 'mcp_resource_mode=${config.mcp_resource_mode}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}'].join('\n') +
 		'\n'
 	os.write_file(config.config_path, default_content)!
 }

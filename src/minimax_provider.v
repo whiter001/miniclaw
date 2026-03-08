@@ -52,6 +52,10 @@ fn run_minimax_agent_in_session(config Config, prompt string, mut recorder Sessi
 
 fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder SessionRecorder) !string {
 	// 执行带工具循环的 MiniMax Agent 主流程。
+	mut mcp_manager := init_mcp_manager(config)
+	defer {
+		mcp_manager.stop_all()
+	}
 	mut messages := []AgentMessage{}
 	messages << AgentMessage{
 		role:    'user'
@@ -61,7 +65,7 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 	mut last_assistant_text := ''
 	mut last_tool_uses := []ToolUse{}
 	for iteration < max_tool_iterations {
-		body_json := build_minimax_agent_request_json(config, messages)
+		body_json := build_minimax_agent_request_json(config, messages, mut mcp_manager)
 		response_body := send_minimax_request(config, body_json)!
 		content_json := extract_content_array(response_body)
 		text := extract_text_blocks(content_json).trim_space()
@@ -79,7 +83,7 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 		}
 		for tool in tool_uses {
 			recorder.append_tool(tool, 'invoked', false) or {}
-			tool_result := execute_tool(tool, config) or {
+			tool_result := execute_effective_tool(tool, config, mut mcp_manager) or {
 				recorder.append_tool(tool, 'Error: ${err.msg()}', true) or {}
 				messages << build_tool_result_message(tool, 'Error: ${err.msg()}', true)
 				continue
@@ -90,6 +94,17 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 		iteration++
 	}
 	return error(build_tool_iteration_limit_error(iteration, last_assistant_text, last_tool_uses))
+}
+
+// 按优先级执行本地工具或 MCP 工具。
+fn execute_effective_tool(tool ToolUse, config Config, mut mcp_manager McpManager) !string {
+	local_result := execute_tool(tool, config) or {
+		if config.enable_mcp && mcp_manager.has_tool(tool.name) {
+			return mcp_manager.call_tool(tool.name, build_mcp_arguments_json(tool.input))
+		}
+		return error(err.msg())
+	}
+	return local_result
 }
 
 fn build_tool_iteration_limit_error(iteration int, assistant_text string, tool_uses []ToolUse) string {
@@ -209,7 +224,7 @@ fn build_minimax_request_json(config Config, prompt string) string {
 	return body_json
 }
 
-fn build_minimax_agent_request_json(config Config, messages []AgentMessage) string {
+fn build_minimax_agent_request_json(config Config, messages []AgentMessage, mut mcp_manager McpManager) string {
 	// 构建包含工具声明和消息历史的 Agent 请求体。
 	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature}'
 	system_prompt := load_system_prompt(config)
@@ -220,7 +235,7 @@ fn build_minimax_agent_request_json(config Config, messages []AgentMessage) stri
 		default_system
 	}
 	body_json += ',"system":"${escape_json_string(effective_system)}"'
-	body_json += ',"tools":' + get_tools_schema_json()
+	body_json += ',"tools":' + build_effective_tools_schema_json(mut mcp_manager)
 	body_json += ',"messages":['
 	for message in messages {
 		if message.content_json.len > 0 {

@@ -57,6 +57,11 @@ fn apply_command_config_overrides(mut config Config, args []string) {
 			index += 2
 			continue
 		}
+		if args[index] == '--mcp' {
+			config.enable_mcp = true
+			index++
+			continue
+		}
 		if args[index] == '--webhook-port' && index + 1 < args.len {
 			config.qq_webhook_port = args[index + 1].int()
 			index += 2
@@ -74,15 +79,19 @@ fn print_help() {
 	println('  miniclaw onboard              Initialize config and workspace')
 	println('  miniclaw status               Show current configuration status')
 	println('  miniclaw gateway [--once] [--webhook-port PORT]   Start QQ gateway bootstrap or webhook server')
-	println('  miniclaw agent [-p PROMPT] [--workspace PATH]    Run agent')
+	println('  miniclaw agent [-p PROMPT] [--workspace PATH] [--mcp]    Run agent')
 	println('  miniclaw --version            Show version')
 	println('')
 	println('Environment variables:')
 	println('  MINICLAW_HOME')
 	println('  MINICLAW_WORKSPACE')
+	println('  MINICLAW_MCP_CONFIG_PATH')
 	println('  MINICLAW_API_KEY')
 	println('  MINICLAW_API_URL')
 	println('  MINICLAW_MODEL')
+	println('  MINICLAW_ENABLE_MCP')
+	println('  MINICLAW_MCP_BASE_PATH')
+	println('  MINICLAW_MCP_RESOURCE_MODE')
 	println('  MINICLAW_QQ_APP_ID')
 	println('  MINICLAW_QQ_APP_SECRET')
 }

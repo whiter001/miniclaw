@@ -55,6 +55,10 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 - `api_key`: MiniMax API Key，本地填写。
 - `api_url`: 默认使用 MiniMax Anthropic 兼容接口。
 - `model`: 默认是 `MiniMax-M2.5`。
+- `mcp_config_path`: 额外 MCP 服务配置文件，默认是 `~/.config/miniclaw/mcp.json`。
+- `enable_mcp`: 是否启用内置 MiniMax MCP，支持 `web_search`、`understand_image`。
+- `mcp_base_path`: MiniMax MCP 的本地输出目录；留空时默认落到 workspace 下的 `state/minimax-mcp`。
+- `mcp_resource_mode`: 传给 MiniMax MCP 的资源模式，默认 `url`。
 - `qq_app_id`: QQ 机器人 AppID，本地填写。
 - `qq_token`: QQ 机器人令牌，本地填写。
 - `qq_app_secret`: QQ 机器人密钥，本地填写。
@@ -63,6 +67,20 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 - `qq_allow_users`: 允许触发机器人的单聊用户列表，多个值用英文逗号分隔；留空表示不限制。
 - `qq_allow_groups`: 允许触发机器人的群列表，多个值用英文逗号分隔；留空表示不限制。
 - `qq_processing_text`: 长任务开始处理时先回复的占位文案。
+
+## MCP 支持
+
+MiniClaw 现在可以直接启用内置 MiniMax MCP，并且可以额外挂载你自己的 stdio MCP 服务。
+
+启用内置 MCP 的最简单方式：
+
+```bash
+MINICLAW_API_KEY=your_key miniclaw agent --workspace . --mcp -p "请搜索 MiniMax MCP 文档，并总结要点。"
+```
+
+内置 MCP 会尝试通过 `uvx --native-tls minimax-coding-plan-mcp -y` 启动，并自动向模型暴露 `web_search` 和 `understand_image` 等工具。
+
+如果你还想接入额外的 MCP 服务，可以创建 [examples/mcp.json.example](examples/mcp.json.example) 同结构的本地文件，并放到 `mcp_config_path` 指向的位置。当前只支持 `stdio` 类型服务。
 
 ## 目标边界
 
