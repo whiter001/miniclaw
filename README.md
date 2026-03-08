@@ -37,6 +37,21 @@ v test src
 ./miniclaw gateway
 ```
 
+如果你要把当前工作区快速部署到 `bl` 并同时启用内置 MCP，可以直接运行：
+
+```bash
+./scripts/deploy_bl.sh
+```
+
+脚本会完成这些动作：
+
+- 同步当前工作区到远端 `/bl/project/miniclaw/repo`
+- 如果本地存在 `/tmp/v-master.zip`，就上传并在远端用它升级 V
+- 在远端安装 `uvx`，并开启 `enable_mcp=true`
+- 自动写入 `miniclaw-gateway` 的 systemd 资源限制：内存、CPU 和任务数
+- 远端重建 MiniClaw，重启 `miniclaw-gateway`
+- 依次验证 `web_search` 和 `understand_image` 两条内置 MCP 链路
+
 ## 配置示例
 
 仓库内提供了一份可直接参考的示例配置文件：[examples/miniclaw.config.example](examples/miniclaw.config.example)。
