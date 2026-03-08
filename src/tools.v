@@ -2,7 +2,9 @@ module main
 
 import os
 
-const max_tool_iterations = 8
+// 最大工具迭代次数 (10-1000, 默认100)
+// 可通过 config 中的 max_tool_iterations 或环境变量 MINICLAW_MAX_TOOL_ITERATIONS 配置
+const max_tool_iterations = 100
 const max_exec_output_chars = 12000
 
 const blocked_exec_patterns = [

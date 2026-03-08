@@ -29,6 +29,7 @@ pub mut:
 	qq_allow_users        string
 	qq_allow_groups       string
 	qq_processing_text    string
+	max_tool_iterations   int
 }
 
 fn default_config() Config {
@@ -59,6 +60,7 @@ fn default_config() Config {
 		qq_allow_users:        ''
 		qq_allow_groups:       ''
 		qq_processing_text:    '收到，处理中，请稍候。'
+		max_tool_iterations:   100
 	}
 }
 
@@ -135,6 +137,13 @@ fn apply_config_value(mut config Config, key string, value string) {
 		'request_timeout' {
 			if parsed := strconv.atoi(value) {
 				config.request_timeout = parsed
+			}
+		}
+		'max_tool_iterations' {
+			if parsed := strconv.atoi(value) {
+				if parsed >= 10 && parsed <= 1000 {
+					config.max_tool_iterations = parsed
+				}
 			}
 		}
 		'enable_mcp' {
@@ -253,6 +262,13 @@ fn apply_env_overrides(mut config Config) {
 	if value := os.getenv_opt('MINICLAW_REQUEST_TIMEOUT') {
 		if parsed := strconv.atoi(value) {
 			config.request_timeout = parsed
+		}
+	}
+	if value := os.getenv_opt('MINICLAW_MAX_TOOL_ITERATIONS') {
+		if parsed := strconv.atoi(value) {
+			if parsed >= 10 && parsed <= 1000 {
+				config.max_tool_iterations = parsed
+			}
 		}
 	}
 	if value := os.getenv_opt('MINICLAW_ENABLE_MCP') {

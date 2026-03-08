@@ -64,7 +64,7 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 	mut iteration := 0
 	mut last_assistant_text := ''
 	mut last_tool_uses := []ToolUse{}
-	for iteration < max_tool_iterations {
+	for iteration < config.max_tool_iterations {
 		body_json := build_minimax_agent_request_json(config, messages, mut mcp_manager)
 		response_body := send_minimax_request(config, body_json)!
 		content_json := extract_content_array(response_body)
