@@ -5,6 +5,8 @@ import time
 
 const default_mcp_request_timeout_ms = 30000
 const understand_image_timeout_ms = 90000
+const mcp_startup_timeout_ms = 60000
+const mcp_startup_poll_interval_ms = 500
 
 pub struct McpToolParam {
 pub:
@@ -431,16 +433,34 @@ fn start_mcp_server(mut server McpServer) {
 		return
 	}
 	server.process = proc
-	time.sleep(1500 * time.millisecond)
-	if !proc.is_alive() {
-		return
-	}
-	if !mcp_initialize(mut server) {
+	if !wait_for_mcp_server_ready(mut server) {
 		stop_mcp_server(mut server)
 		return
 	}
-	mcp_list_tools(mut server)
 	server.is_connected = true
+}
+
+// 在限定时间内等待 MCP 服务完成初始化并返回工具列表。
+fn wait_for_mcp_server_ready(mut server McpServer) bool {
+	mut elapsed_ms := 0
+	for elapsed_ms <= mcp_startup_timeout_ms {
+		if server.process == unsafe { nil } || !server.process.is_alive() {
+			return false
+		}
+		if !mcp_initialize(mut server) {
+			time.sleep(mcp_startup_poll_interval_ms * time.millisecond)
+			elapsed_ms += mcp_startup_poll_interval_ms
+			continue
+		}
+		tools := mcp_list_tools_with_timeout(mut server, default_mcp_request_timeout_ms) or {
+			time.sleep(mcp_startup_poll_interval_ms * time.millisecond)
+			elapsed_ms += mcp_startup_poll_interval_ms
+			continue
+		}
+		server.tools = tools
+		return true
+	}
+	return false
 }
 
 // 停止并清理单个 MCP 子进程。
@@ -560,8 +580,13 @@ fn mcp_initialize(mut server McpServer) bool {
 
 // 获取 MCP 服务暴露的工具列表。
 fn mcp_list_tools(mut server McpServer) {
-	response := mcp_send_request_with_timeout(mut server, 'tools/list', '{}', 5000) or { return }
-	server.tools = parse_mcp_tools(response)
+	server.tools = mcp_list_tools_with_timeout(mut server, 5000) or { return }
+}
+
+// 获取 MCP 服务暴露的工具列表，并允许调用方指定等待时间。
+fn mcp_list_tools_with_timeout(mut server McpServer, timeout_ms int) ![]McpTool {
+	response := mcp_send_request_with_timeout(mut server, 'tools/list', '{}', timeout_ms)!
+	return parse_mcp_tools(response)
 }
 
 // 调用单个 MCP 工具。
