@@ -33,10 +33,12 @@ mut:
 }
 
 fn get_tools_schema_json() string {
+	// 返回提供给模型的工具声明 JSON。
 	return '[{"name":"list_dir","description":"List files and directories inside the workspace. Use this before reading files when you need to explore.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative path inside the workspace. Use . for the workspace root."}},"required":[]}},{"name":"read_file","description":"Read a UTF-8 text file from the workspace.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative file path inside the workspace."},"start_line":{"type":"string","description":"Optional 1-based start line."},"end_line":{"type":"string","description":"Optional 1-based end line."}},"required":["path"]}},{"name":"write_file","description":"Write a UTF-8 text file inside the workspace. This replaces the full file content.","input_schema":{"type":"object","properties":{"path":{"type":"string","description":"Relative file path inside the workspace."},"content":{"type":"string","description":"Full file content to write."}},"required":["path","content"]}},{"name":"exec","description":"Run a shell command with the workspace as the current working directory. Dangerous destructive commands are blocked.","input_schema":{"type":"object","properties":{"command":{"type":"string","description":"Shell command to run."}},"required":["command"]}},{"name":"grep_search","description":"Search for text or regex inside workspace files.","input_schema":{"type":"object","properties":{"query":{"type":"string","description":"Search pattern."},"path":{"type":"string","description":"Optional relative directory or file path inside the workspace."},"is_regexp":{"type":"string","description":"Set to true to treat query as regular expression."}},"required":["query"]}}]'
 }
 
 fn execute_tool(tool ToolUse, config Config) !string {
+	// 根据工具名称分派到对应实现。
 	return match tool.name {
 		'list_dir' { tool_list_dir(tool, config) }
 		'read_file' { tool_read_file(tool, config) }
@@ -48,6 +50,7 @@ fn execute_tool(tool ToolUse, config Config) !string {
 }
 
 fn tool_list_dir(tool ToolUse, config Config) !string {
+	// 列出工作区内目录的直接子项。
 	rel_path := first_non_empty([
 		tool.input['path'] or { '' },
 		tool.input['dir'] or { '' },
@@ -71,6 +74,7 @@ fn tool_list_dir(tool ToolUse, config Config) !string {
 }
 
 fn tool_read_file(tool ToolUse, config Config) !string {
+	// 读取工作区内文本文件，可选按行截取。
 	rel_path := first_non_empty([
 		tool.input['path'] or { '' },
 		tool.input['filePath'] or { '' },
@@ -103,6 +107,7 @@ fn tool_read_file(tool ToolUse, config Config) !string {
 }
 
 fn tool_write_file(tool ToolUse, config Config) !string {
+	// 把完整内容写入工作区内目标文件。
 	rel_path := first_non_empty([
 		tool.input['path'] or { '' },
 		tool.input['filePath'] or { '' },
@@ -123,6 +128,7 @@ fn tool_write_file(tool ToolUse, config Config) !string {
 }
 
 fn tool_exec(tool ToolUse, config Config) !string {
+	// 在工作区内执行 shell 命令，并做危险命令拦截。
 	command := first_non_empty([
 		tool.input['command'] or { '' },
 		tool.input['cmd'] or { '' },
@@ -149,6 +155,7 @@ fn tool_exec(tool ToolUse, config Config) !string {
 }
 
 fn tool_grep_search(tool ToolUse, config Config) !string {
+	// 在工作区内执行文本或正则搜索。
 	query := first_non_empty([
 		tool.input['query'] or { '' },
 		tool.input['pattern'] or { '' },
@@ -191,6 +198,7 @@ fn tool_grep_search(tool ToolUse, config Config) !string {
 }
 
 fn resolve_workspace_path(workspace string, rel_path string) !string {
+	// 将相对路径解析为工作区内的安全绝对路径。
 	base := os.real_path(workspace)
 	mut target := if rel_path == '.' || rel_path.len == 0 {
 		base
@@ -205,6 +213,7 @@ fn resolve_workspace_path(workspace string, rel_path string) !string {
 }
 
 fn relative_to_workspace(workspace string, file_path string) string {
+	// 将绝对路径转换为相对工作区路径。
 	base := os.norm_path(workspace)
 	normalized := os.norm_path(file_path)
 	if normalized == base {
@@ -217,6 +226,7 @@ fn relative_to_workspace(workspace string, file_path string) string {
 }
 
 fn is_blocked_command(command string) bool {
+	// 判断命令是否命中危险命令黑名单。
 	normalized := command.to_lower()
 	for pattern in blocked_exec_patterns {
 		if normalized.contains(pattern) {
@@ -227,10 +237,12 @@ fn is_blocked_command(command string) bool {
 }
 
 fn shell_quote(value string) string {
+	// 对 shell 参数进行单引号转义。
 	return "'" + value.replace("'", "'\\''") + "'"
 }
 
 fn parse_optional_positive_int(value string) int {
+	// 解析可选的正整数参数，不合法时返回 0。
 	if value.len == 0 {
 		return 0
 	}
@@ -242,6 +254,7 @@ fn parse_optional_positive_int(value string) int {
 }
 
 fn first_non_empty(values []string) string {
+	// 返回第一个非空字符串值。
 	for value in values {
 		if value.trim_space().len > 0 {
 			return value.trim_space()
@@ -251,6 +264,7 @@ fn first_non_empty(values []string) string {
 }
 
 fn build_tool_result_message(tool ToolUse, result string, is_error bool) AgentMessage {
+	// 将工具执行结果封装为回灌模型的消息块。
 	escaped_result := escape_json_string(result)
 	mut block := '{"type":"tool_result","tool_use_id":"${escape_json_string(tool.id)}","content":"${escaped_result}"'
 	if is_error {

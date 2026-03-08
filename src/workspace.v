@@ -11,6 +11,7 @@ const workspace_directories = [
 ]
 
 fn ensure_workspace(config Config) ! {
+	// 创建 MiniClaw 运行所需的工作区目录和说明文件。
 	os.mkdir_all(config.home_dir)!
 	os.mkdir_all(config.workspace)!
 	for name in workspace_directories {
@@ -22,6 +23,7 @@ fn ensure_workspace(config Config) ! {
 }
 
 fn ensure_workspace_file(path string, content string) ! {
+	// 仅在文件不存在时写入默认内容。
 	if os.exists(path) {
 		return
 	}

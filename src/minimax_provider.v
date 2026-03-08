@@ -7,6 +7,7 @@ import time
 const tool_iteration_error_prefix = 'tool iteration limit reached'
 
 fn call_minimax_text(config Config, prompt string) !string {
+	// 发起一次纯文本 MiniMax 请求。
 	if config.api_key.len == 0 {
 		return error('MINICLAW_API_KEY is not configured')
 	}
@@ -37,17 +38,20 @@ fn call_minimax_text(config Config, prompt string) !string {
 }
 
 fn run_minimax_agent(config Config, prompt string) !string {
+	// 为单次请求创建会话记录器并运行 Agent。
 	mut recorder := new_session_recorder(config)!
 	recorder.append_message('message', 'user', prompt) or {}
 	return run_minimax_agent_with_recorder(config, prompt, mut recorder)
 }
 
 fn run_minimax_agent_in_session(config Config, prompt string, mut recorder SessionRecorder) !string {
+	// 在现有会话记录器上继续运行 Agent。
 	recorder.append_message('message', 'user', prompt) or {}
 	return run_minimax_agent_with_recorder(config, prompt, mut recorder)
 }
 
 fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder SessionRecorder) !string {
+	// 执行带工具循环的 MiniMax Agent 主流程。
 	mut messages := []AgentMessage{}
 	messages << AgentMessage{
 		role:    'user'
@@ -89,6 +93,7 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 }
 
 fn build_tool_iteration_limit_error(iteration int, assistant_text string, tool_uses []ToolUse) string {
+	// 生成包含上下文的工具循环超限错误信息。
 	mut details := []string{}
 	details << 'after ${iteration} rounds'
 	tool_names := summarize_tool_use_names(tool_uses)
@@ -103,6 +108,7 @@ fn build_tool_iteration_limit_error(iteration int, assistant_text string, tool_u
 }
 
 fn summarize_tool_use_names(tool_uses []ToolUse) string {
+	// 汇总最近一轮工具调用名称，便于日志诊断。
 	if tool_uses.len == 0 {
 		return ''
 	}
@@ -127,6 +133,7 @@ fn summarize_tool_use_names(tool_uses []ToolUse) string {
 }
 
 fn limit_error_preview(value string) string {
+	// 截断错误上下文中的长文本，避免日志过长。
 	preview := value.replace('\n', ' ').replace('\r', ' ').trim_space()
 	if preview.len == 0 {
 		return ''
@@ -138,6 +145,7 @@ fn limit_error_preview(value string) string {
 }
 
 fn send_minimax_request(config Config, body_json string) !string {
+	// 先尝试用 V 的 HTTP 客户端请求 MiniMax，失败时再走 curl 兜底。
 	if config.api_key.len == 0 {
 		return error('MINICLAW_API_KEY is not configured')
 	}
@@ -166,6 +174,7 @@ fn send_minimax_request(config Config, body_json string) !string {
 }
 
 fn send_minimax_request_via_curl(config Config, body_json string) !string {
+	// 使用 curl 发送请求，规避部分环境下的 HTTP 客户端兼容问题。
 	status_marker := '__MINICLAW_HTTP_STATUS__:'
 	command := 'curl -sS --max-time ${config.request_timeout} -X POST ' +
 		shell_quote(config.api_url) + ' -H ' +
@@ -189,6 +198,7 @@ fn send_minimax_request_via_curl(config Config, body_json string) !string {
 }
 
 fn build_minimax_request_json(config Config, prompt string) string {
+	// 构建单轮文本请求体。
 	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature}'
 	system_prompt := load_system_prompt(config)
 	if system_prompt.len > 0 {
@@ -200,6 +210,7 @@ fn build_minimax_request_json(config Config, prompt string) string {
 }
 
 fn build_minimax_agent_request_json(config Config, messages []AgentMessage) string {
+	// 构建包含工具声明和消息历史的 Agent 请求体。
 	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature}'
 	system_prompt := load_system_prompt(config)
 	default_system := 'You are MiniClaw, a local AI agent. When you need workspace information, prefer using tools instead of guessing. Only access files inside the workspace.'
@@ -226,6 +237,7 @@ fn build_minimax_agent_request_json(config Config, messages []AgentMessage) stri
 }
 
 fn load_system_prompt(config Config) string {
+	// 读取工作区中的 AGENTS.md 作为系统提示补充。
 	agents_path := os.join_path(config.workspace, 'AGENTS.md')
 	if os.exists(agents_path) {
 		return os.read_file(agents_path) or { '' }
@@ -234,6 +246,7 @@ fn load_system_prompt(config Config) string {
 }
 
 fn parse_anthropic_text_response(body string) string {
+	// 从 Anthropic 兼容响应中提取最终文本内容。
 	content_json := extract_content_array(body)
 	if content_json.len > 0 {
 		return extract_text_blocks(content_json).trim_space()

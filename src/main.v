@@ -5,6 +5,7 @@ import os
 const version = 'v0.1.0'
 
 fn main() {
+	// 解析命令行并分发到对应子命令。
 	args := os.args[1..]
 	if args.len == 0 {
 		print_help()
@@ -48,6 +49,7 @@ fn main() {
 }
 
 fn apply_command_config_overrides(mut config Config, args []string) {
+	// 处理命令行中的临时配置覆盖参数。
 	mut index := 0
 	for index < args.len {
 		if args[index] == '--workspace' && index + 1 < args.len {
@@ -65,6 +67,7 @@ fn apply_command_config_overrides(mut config Config, args []string) {
 }
 
 fn print_help() {
+	// 输出命令行帮助信息。
 	println('MiniClaw ${version}')
 	println('')
 	println('Usage:')

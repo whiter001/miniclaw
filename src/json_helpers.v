@@ -1,6 +1,7 @@
 module main
 
 fn escape_json_string(s string) string {
+	// 对字符串做最小 JSON 转义。
 	mut result := []u8{cap: s.len}
 	for ch in s.bytes() {
 		match ch {
@@ -43,6 +44,7 @@ fn escape_json_string(s string) string {
 }
 
 fn decode_json_string(s string) string {
+	// 解析常见的 JSON 转义序列。
 	if !s.contains('\\') {
 		return s
 	}
@@ -105,6 +107,7 @@ fn decode_json_string(s string) string {
 }
 
 fn extract_json_string_value(json_str string, key string) string {
+	// 从 JSON 字符串中提取指定键的字符串值。
 	pattern := '"${key}"'
 	if index := json_str.index(pattern) {
 		mut pos := index + pattern.len
@@ -132,6 +135,7 @@ fn extract_json_string_value(json_str string, key string) string {
 }
 
 fn extract_json_int_value(json_str string, key string) int {
+	// 从 JSON 字符串中提取指定键的整数值。
 	pattern := '"${key}"'
 	if index := json_str.index(pattern) {
 		mut pos := index + pattern.len
@@ -157,6 +161,7 @@ fn extract_json_int_value(json_str string, key string) int {
 }
 
 fn extract_json_object_value(json_str string, key string) string {
+	// 从 JSON 字符串中提取指定键对应的对象或数组片段。
 	pattern := '"${key}"'
 	if index := json_str.index(pattern) {
 		mut pos := index + pattern.len
@@ -182,6 +187,7 @@ fn extract_json_object_value(json_str string, key string) string {
 }
 
 fn is_json_quote_escaped(s string, quote_index int) bool {
+	// 判断当前位置的引号是否被反斜杠转义。
 	if quote_index <= 0 || quote_index >= s.len {
 		return false
 	}
@@ -198,6 +204,7 @@ fn is_json_quote_escaped(s string, quote_index int) bool {
 }
 
 fn find_json_string_terminator(s string, start int) int {
+	// 查找 JSON 字符串的结束引号位置。
 	mut index := start
 	for index < s.len {
 		if s[index] == `"` && !is_json_quote_escaped(s, index) {
@@ -209,6 +216,7 @@ fn find_json_string_terminator(s string, start int) int {
 }
 
 fn find_matching_bracket(s string, start int) int {
+	// 查找对象或数组起始括号对应的结束位置。
 	if start >= s.len {
 		return -1
 	}
@@ -241,6 +249,7 @@ fn find_matching_bracket(s string, start int) int {
 }
 
 fn extract_content_array(body string) string {
+	// 从模型响应体中截取 content 数组片段。
 	target := '"content":['
 	if index := body.index(target) {
 		array_start := index + target.len - 1
@@ -253,6 +262,7 @@ fn extract_content_array(body string) string {
 }
 
 fn extract_text_blocks(content_json string) string {
+	// 拼接 content 数组中的所有 text 块。
 	mut result := ''
 	mut index := 0
 	for index < content_json.len {
@@ -277,6 +287,7 @@ fn extract_text_blocks(content_json string) string {
 }
 
 fn parse_json_string_object(json_str string) map[string]string {
+	// 解析键和值都较简单的 JSON 对象。
 	mut result := map[string]string{}
 	mut pos := 1
 	for pos < json_str.len - 1 {
@@ -333,6 +344,7 @@ fn parse_json_string_object(json_str string) map[string]string {
 }
 
 fn extract_tool_use_blocks(content_json string) []ToolUse {
+	// 从 content 数组中提取所有 tool_use 块。
 	mut tools := []ToolUse{}
 	mut index := 0
 	for index < content_json.len {

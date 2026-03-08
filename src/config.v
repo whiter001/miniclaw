@@ -28,6 +28,7 @@ pub mut:
 }
 
 fn default_config() Config {
+	// 生成内置默认配置。
 	home_dir := os.join_path(os.home_dir(), '.miniclaw')
 	return Config{
 		home_dir:              home_dir
@@ -54,6 +55,7 @@ fn default_config() Config {
 }
 
 fn load_config() Config {
+	// 加载本地配置文件并叠加环境变量覆盖。
 	mut config := default_config()
 	config.home_dir = expand_home_path(config.home_dir)
 	config.workspace = expand_home_path(config.workspace)
@@ -69,6 +71,7 @@ fn load_config() Config {
 }
 
 fn parse_config_content(content string, base Config) Config {
+	// 解析 key=value 形式的配置内容。
 	mut config := base
 	for line in content.split_into_lines() {
 		trimmed := line.trim_space()
@@ -87,6 +90,7 @@ fn parse_config_content(content string, base Config) Config {
 }
 
 fn apply_config_value(mut config Config, key string, value string) {
+	// 将单个配置项应用到配置对象上。
 	match key {
 		'home_dir' {
 			config.home_dir = value
@@ -158,6 +162,7 @@ fn apply_config_value(mut config Config, key string, value string) {
 }
 
 fn apply_env_overrides(mut config Config) {
+	// 用环境变量覆盖配置文件中的对应字段。
 	if value := os.getenv_opt('MINICLAW_HOME') {
 		config.home_dir = expand_home_path(value)
 	}
@@ -229,6 +234,7 @@ fn apply_env_overrides(mut config Config) {
 }
 
 fn ensure_config_parent_dir(config_path string) ! {
+	// 确保配置文件的父目录已经存在。
 	parent_dir := os.dir(config_path)
 	if parent_dir.len == 0 {
 		return
@@ -237,6 +243,7 @@ fn ensure_config_parent_dir(config_path string) ! {
 }
 
 fn write_default_config(config Config) ! {
+	// 把默认配置写入本地配置文件。
 	ensure_config_parent_dir(config.config_path)!
 	default_content :=
 		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'api_key=', 'api_url=${config.api_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}'].join('\n') +
@@ -245,6 +252,7 @@ fn write_default_config(config Config) ! {
 }
 
 fn expand_home_path(path string) string {
+	// 把以 ~ 开头的路径展开为用户目录。
 	if path.starts_with('~/') {
 		return os.join_path(os.home_dir(), path[2..])
 	}

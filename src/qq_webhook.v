@@ -11,6 +11,7 @@ struct QqWebhookHandler {
 }
 
 fn start_qq_webhook_server(config Config) ! {
+	// 启动本地 QQ webhook HTTP 服务。
 	mut server := &http.Server{
 		addr:                 '${config.qq_webhook_host}:${config.qq_webhook_port}'
 		handler:              QqWebhookHandler{
@@ -24,6 +25,7 @@ fn start_qq_webhook_server(config Config) ! {
 }
 
 fn (handler QqWebhookHandler) handle(req http.Request) http.Response {
+	// 按请求路径和方法分发 webhook、验证和授权回调请求。
 	request_path := request_path_only(req.url)
 	if request_path == handler.config.qq_auth_callback_path {
 		if req.method != .get {
@@ -51,6 +53,7 @@ fn (handler QqWebhookHandler) handle(req http.Request) http.Response {
 }
 
 fn handle_qq_auth_callback(config Config, request_url string) http.Response {
+	// 记录并返回 QQ 网页授权回调页面。
 	query := extract_request_query(request_url)
 	payload := '{"url":"${escape_json_string(request_url)}","query":"${escape_json_string(query)}"}'
 	append_qq_event_log(config, 'auth_callback', payload) or {}
@@ -59,11 +62,13 @@ fn handle_qq_auth_callback(config Config, request_url string) http.Response {
 }
 
 fn request_path_only(request_url string) string {
+	// 从 URL 中去掉查询串，仅保留路径部分。
 	query_index := request_url.index('?') or { return request_url }
 	return request_url[..query_index]
 }
 
 fn extract_request_query(request_url string) string {
+	// 从 URL 中提取查询字符串。
 	query_index := request_url.index('?') or { return '' }
 	if query_index + 1 >= request_url.len {
 		return ''
@@ -72,17 +77,20 @@ fn extract_request_query(request_url string) string {
 }
 
 fn escape_html(value string) string {
+	// 对 HTML 文本做最小转义。
 	return value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"',
 		'&quot;')
 }
 
 fn handle_qq_message_event_async(config Config, payload string) {
+	// 异步处理 QQ 消息事件，并在失败时补充日志。
 	handle_qq_message_event(config, payload) or {
 		append_qq_event_log(config, 'event_error', '{"error":"${escape_json_string(err.msg())}","raw":${payload}}') or {}
 	}
 }
 
 fn handle_qq_message_event(config Config, payload string) ! {
+	// 执行单条 QQ 消息事件的完整处理链路。
 	target := extract_qq_reply_target(payload)
 	if target.scene.len == 0 {
 		return
@@ -117,6 +125,7 @@ fn handle_qq_message_event(config Config, payload string) ! {
 }
 
 fn build_qq_failure_message(error_message string) string {
+	// 按错误类型生成更易理解的 QQ 降级提示文案。
 	if error_message.contains(tool_iteration_error_prefix) {
 		return '这个问题触发了过多工具调用，我没能在限定步数内完成。请把问题拆小一点，或直接说明要查看的文件、目录或命令。'
 	}
@@ -124,6 +133,7 @@ fn build_qq_failure_message(error_message string) string {
 }
 
 fn append_qq_agent_error_log(config Config, target QqReplyTarget, session_id string, prompt string, error_message string) ! {
+	// 记录 Agent 处理失败时的诊断日志。
 	kind := if error_message.contains(tool_iteration_error_prefix) {
 		'event_tool_iteration_limit'
 	} else {
@@ -134,6 +144,7 @@ fn append_qq_agent_error_log(config Config, target QqReplyTarget, session_id str
 }
 
 fn mark_qq_message_seen(config Config, msg_id string) !bool {
+	// 用消息 ID 去重，避免重复回复同一事件。
 	trimmed_id := msg_id.trim_space()
 	if trimmed_id.len == 0 {
 		return true
@@ -150,6 +161,7 @@ fn mark_qq_message_seen(config Config, msg_id string) !bool {
 }
 
 fn build_qq_validation_response(config Config, payload string) !string {
+	// 构建 QQ 平台回调验证所需的签名响应。
 	d_object := extract_json_object_value(payload, 'd')
 	plain_token := decode_json_string(extract_json_string_value(d_object, 'plain_token'))
 	event_ts := decode_json_string(extract_json_string_value(d_object, 'event_ts'))
@@ -161,6 +173,7 @@ fn build_qq_validation_response(config Config, payload string) !string {
 }
 
 fn sign_qq_validation(secret string, event_ts string, plain_token string) !string {
+	// 使用 QQ 约定的私钥派生方式生成校验签名。
 	if secret.len == 0 {
 		return error('qq_app_secret is empty')
 	}
@@ -175,6 +188,7 @@ fn sign_qq_validation(secret string, event_ts string, plain_token string) !strin
 }
 
 fn append_qq_event_log(config Config, kind string, payload string) ! {
+	// 追加一条 QQ webhook 事件日志到本地 JSONL 文件。
 	log_path := os.join_path(config.workspace, 'state', 'qq_webhook_events.jsonl')
 	existing := if os.exists(log_path) { os.read_file(log_path) or { '' } } else { '' }
 	line := '{"ts":"${escape_json_string(time.now().str())}","kind":"${escape_json_string(kind)}","payload":${payload}}\n'
@@ -182,6 +196,7 @@ fn append_qq_event_log(config Config, kind string, payload string) ! {
 }
 
 fn qq_json_response(status http.Status, body string) http.Response {
+	// 构造 JSON HTTP 响应。
 	mut header := http.new_header()
 	header.add(.content_type, 'application/json')
 	mut response := http.Response{
@@ -193,6 +208,7 @@ fn qq_json_response(status http.Status, body string) http.Response {
 }
 
 fn qq_plain_response(status http.Status, body string) http.Response {
+	// 构造纯文本 HTTP 响应。
 	mut response := http.Response{
 		body: body
 	}
@@ -201,6 +217,7 @@ fn qq_plain_response(status http.Status, body string) http.Response {
 }
 
 fn qq_html_response(status http.Status, body string) http.Response {
+	// 构造 HTML HTTP 响应。
 	mut header := http.new_header()
 	header.add(.content_type, 'text/html; charset=utf-8')
 	mut response := http.Response{

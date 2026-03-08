@@ -4,6 +4,7 @@ import os
 
 fn run_onboard(config Config) int {
 	mut created_config := false
+	// 初始化本地配置和工作区目录。
 	if !os.exists(config.config_path) {
 		write_default_config(config) or {
 			eprintln('failed to write config: ${err.msg()}')
@@ -26,6 +27,7 @@ fn run_onboard(config Config) int {
 }
 
 fn run_status(config Config) int {
+	// 输出当前配置和工作区状态摘要。
 	println('MiniClaw status')
 	println('version: ${version}')
 	println('config: ${config.config_path}')
@@ -43,6 +45,7 @@ fn run_status(config Config) int {
 }
 
 fn run_gateway(config Config, args []string) int {
+	// 完成 QQ 网关引导，并在需要时启动本地 webhook 服务。
 	if ensure_runtime_ready(config) != 0 {
 		return 1
 	}
@@ -81,6 +84,7 @@ fn run_gateway(config Config, args []string) int {
 }
 
 fn run_agent(config Config, args []string) int {
+	// 运行单次或交互式 Agent 对话。
 	if ensure_runtime_ready(config) != 0 {
 		return 1
 	}
@@ -125,6 +129,7 @@ fn run_agent(config Config, args []string) int {
 }
 
 fn ensure_runtime_ready(config Config) int {
+	// 检查配置文件和工作区是否已经准备就绪。
 	if !os.exists(config.config_path) {
 		eprintln('config not found: ${config.config_path}')
 		eprintln('run `miniclaw onboard` first.')
@@ -138,6 +143,7 @@ fn ensure_runtime_ready(config Config) int {
 }
 
 fn parse_prompt_arg(args []string) string {
+	// 从命令行参数中提取 prompt 内容。
 	mut index := 0
 	for index < args.len {
 		arg := args[index]
@@ -152,6 +158,7 @@ fn parse_prompt_arg(args []string) string {
 }
 
 fn has_flag(args []string, flag string) bool {
+	// 判断命令行参数中是否包含指定开关。
 	for arg in args {
 		if arg == flag {
 			return true

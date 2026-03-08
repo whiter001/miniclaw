@@ -30,6 +30,7 @@ mut:
 }
 
 fn fetch_qq_access_token(config Config) !QqAccessToken {
+	// 获取 QQ 机器人 access token。
 	if config.qq_app_id.len == 0 || config.qq_app_secret.len == 0 {
 		return error('qq_app_id or qq_app_secret is not configured')
 	}
@@ -60,6 +61,7 @@ fn fetch_qq_access_token(config Config) !QqAccessToken {
 }
 
 fn fetch_qq_bot_profile(config Config, access_token string) !QqBotProfile {
+	// 读取当前 QQ 机器人的基础资料。
 	mut headers := http.new_header()
 	headers.add(.authorization, 'QQBot ${access_token}')
 	mut request := http.Request{
@@ -81,6 +83,7 @@ fn fetch_qq_bot_profile(config Config, access_token string) !QqBotProfile {
 }
 
 fn write_qq_gateway_state(config Config, token QqAccessToken, profile QqBotProfile) !string {
+	// 将 QQ 网关引导结果写入本地状态文件。
 	state_path := os.join_path(config.workspace, 'state', 'qq_gateway_state.json')
 	content := '{\n' +
 		'  "fetched_at": "${escape_json_string(time.unix(token.fetched_at).str())}",\n' +
@@ -95,6 +98,7 @@ fn write_qq_gateway_state(config Config, token QqAccessToken, profile QqBotProfi
 }
 
 fn send_qq_reply(config Config, access_token string, target QqReplyTarget, content string, msg_seq int) !string {
+	// 按会话类型向 QQ 单聊或群聊发送回复。
 	trimmed_content := content.trim_space()
 	if trimmed_content.len == 0 {
 		return error('qq reply content is empty')
@@ -130,6 +134,7 @@ fn send_qq_reply(config Config, access_token string, target QqReplyTarget, conte
 }
 
 fn is_qq_target_allowed(config Config, target QqReplyTarget) bool {
+	// 根据白名单配置判断当前回复目标是否允许访问。
 	if target.scene == 'c2c' {
 		if config.qq_allow_users.trim_space().len == 0 {
 			return true
@@ -146,6 +151,7 @@ fn is_qq_target_allowed(config Config, target QqReplyTarget) bool {
 }
 
 fn csv_contains_value(csv string, value string) bool {
+	// 判断逗号分隔列表中是否包含指定值。
 	needle := value.trim_space()
 	if needle.len == 0 {
 		return false
@@ -159,6 +165,7 @@ fn csv_contains_value(csv string, value string) bool {
 }
 
 fn extract_qq_reply_target(payload string) QqReplyTarget {
+	// 从 QQ 事件负载中提取回复目标信息。
 	event_type := decode_json_string(extract_json_string_value(payload, 't'))
 	d_object := extract_json_object_value(payload, 'd')
 	msg_id := decode_json_string(extract_json_string_value(d_object, 'id'))
@@ -181,6 +188,7 @@ fn extract_qq_reply_target(payload string) QqReplyTarget {
 }
 
 fn extract_qq_event_prompt(payload string) string {
+	// 从 QQ 事件负载中提取用户输入文本。
 	d_object := extract_json_object_value(payload, 'd')
 	return decode_json_string(extract_json_string_value(d_object, 'content')).trim_space()
 }

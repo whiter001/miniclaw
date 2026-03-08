@@ -6,11 +6,13 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 oxfmt_entry="$repo_root/node_modules/oxfmt/bin/oxfmt"
 
 fail() {
+    # 输出错误并终止脚本。
     printf '%s\n' "$1" >&2
     exit 1
 }
 
 find_node() {
+    # 查找可用于运行本地 oxfmt 的 Node 可执行文件。
     if [ -n "${NODE:-}" ] && [ -x "${NODE}" ]; then
         printf '%s\n' "$NODE"
         return 0

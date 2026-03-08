@@ -4,12 +4,14 @@ import net.http
 import os
 
 fn test_csv_contains_value() {
+	// 验证逗号分隔匹配逻辑可以正确识别目标值。
 	assert csv_contains_value('alpha,beta,gamma', 'beta')
 	assert csv_contains_value('alpha, beta ,gamma', 'beta')
 	assert !csv_contains_value('alpha,beta,gamma', 'delta')
 }
 
 fn test_is_qq_target_allowed() {
+	// 验证 QQ 白名单在单聊和群聊场景下都能生效。
 	config := Config{
 		qq_allow_users:  'u-1,u-2'
 		qq_allow_groups: 'g-1,g-2'
@@ -33,6 +35,7 @@ fn test_is_qq_target_allowed() {
 }
 
 fn test_mark_qq_message_seen() {
+	// 验证消息去重文件能够正确识别重复消息。
 	workspace := os.join_path(os.temp_dir(), 'miniclaw-test-qq-seen')
 	os.mkdir_all(os.join_path(workspace, 'state')) or { panic(err) }
 	defer {
@@ -47,6 +50,7 @@ fn test_mark_qq_message_seen() {
 }
 
 fn test_extract_qq_reply_target_and_prompt_for_c2c() {
+	// 验证单聊事件可以正确解析回复目标和 prompt。
 	openid_key := 'user_' + 'openid'
 	payload := '{"t":"C2C_MESSAGE_CREATE","d":{"id":"msg-1","content":" hello ","author":{"' +
 		openid_key + '":"user-1"}}}'
@@ -58,6 +62,7 @@ fn test_extract_qq_reply_target_and_prompt_for_c2c() {
 }
 
 fn test_extract_qq_reply_target_and_prompt_for_group() {
+	// 验证群聊事件可以正确解析回复目标和 prompt。
 	payload := '{"t":"GROUP_AT_MESSAGE_CREATE","d":{"id":"msg-2","content":" ping ","group_openid":"group-1"}}'
 	target := extract_qq_reply_target(payload)
 	assert target.scene == 'group'
@@ -67,6 +72,7 @@ fn test_extract_qq_reply_target_and_prompt_for_group() {
 }
 
 fn test_qq_webhook_get_rejected_for_message_path() {
+	// 验证 webhook 路径上的非法方法会被拒绝。
 	handler := QqWebhookHandler{
 		config: Config{
 			qq_webhook_path: '/webhook/qq'
@@ -81,6 +87,7 @@ fn test_qq_webhook_get_rejected_for_message_path() {
 }
 
 fn test_qq_webhook_validation_returns_signature() {
+	// 验证 QQ 回调校验请求会返回签名响应。
 	config := Config{
 		qq_app_secret:   'secret-value'
 		qq_webhook_path: '/webhook/qq'
@@ -99,6 +106,7 @@ fn test_qq_webhook_validation_returns_signature() {
 }
 
 fn test_qq_auth_callback_renders_html() {
+	// 验证网页授权回调会返回可读的 HTML 页面。
 	workspace := os.join_path(os.temp_dir(), 'miniclaw-test-qq-auth-callback')
 	os.mkdir_all(os.join_path(workspace, 'state')) or { panic(err) }
 	defer {
@@ -120,6 +128,7 @@ fn test_qq_auth_callback_renders_html() {
 }
 
 fn test_build_tool_iteration_limit_error_contains_context() {
+	// 验证工具循环超限错误会携带必要上下文。
 	err := build_tool_iteration_limit_error(8, 'need more workspace exploration', [
 		ToolUse{
 			name: 'list_dir'
@@ -135,6 +144,7 @@ fn test_build_tool_iteration_limit_error_contains_context() {
 }
 
 fn test_build_qq_failure_message_for_iteration_limit() {
+	// 验证工具循环超限时会返回专门的降级提示。
 	message := build_qq_failure_message('tool iteration limit reached (after 8 rounds; last tools: exec)')
 	assert message.contains('过多工具调用')
 	assert message.contains('拆小一点')
