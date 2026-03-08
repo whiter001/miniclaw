@@ -5,6 +5,8 @@ set -eu
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
+oxfmt_cmd="$repo_root/scripts/run_oxfmt.sh"
+
 staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
 
 if [ -z "$staged_files" ]; then
@@ -69,9 +71,9 @@ format_md_files() {
     done
 
     if [ -n "$md_files" ]; then
-        has_command oxfmt || fail 'pre-commit blocked: `oxfmt` not found for Markdown formatting'
+        [ -x "$oxfmt_cmd" ] || fail 'pre-commit blocked: repository oxfmt runner is missing'
         for path in $md_files; do
-            oxfmt "$path"
+            "$oxfmt_cmd" "$path"
             git add "$path"
         done
     fi
@@ -90,11 +92,13 @@ check_staged_content() {
         blob=$(git show ":$path" 2>/dev/null || true)
         [ -n "$blob" ] || continue
 
-        printf '%s' "$blob" | contains_secret_value && \
+        if printf '%s' "$blob" | contains_secret_value; then
             fail "pre-commit blocked: secret-like config value detected in $path"
+        fi
 
-        printf '%s' "$blob" | contains_sensitive_identifier_value && \
+        if printf '%s' "$blob" | contains_sensitive_identifier_value; then
             fail "pre-commit blocked: sensitive identifier content detected in $path"
+        fi
     done
 }
 

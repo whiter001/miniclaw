@@ -5,6 +5,8 @@ set -eu
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repo_root"
 
+oxfmt_cmd="$repo_root/scripts/run_oxfmt.sh"
+
 has_command() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -40,11 +42,11 @@ format_v_files() {
 }
 
 format_md_files() {
-    has_command oxfmt || fail 'release check failed: `oxfmt` not found'
+    [ -x "$oxfmt_cmd" ] || fail 'release check failed: repository oxfmt runner is missing'
     md_files=$(git ls-files '*.md')
     if [ -n "$md_files" ]; then
         for path in $md_files; do
-            oxfmt "$path"
+            "$oxfmt_cmd" "$path"
         done
     fi
 }
