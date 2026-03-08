@@ -18,7 +18,10 @@
 - `--workspace` 命令行参数已支持覆盖默认 workspace，便于直接作用于当前项目目录。
 - `miniclaw gateway --once` 已支持真实 QQ bootstrap：获取 access token、读取 bot profile、落盘状态。
 - `miniclaw gateway` 已支持启动本地 QQ webhook 服务，完成回调验证签名和事件 ACK。
-- webhook 收到 QQ 单聊/群聊消息事件后，已具备调用 MiniClaw 并尝试被动回复的代码链路。
+- webhook 收到 QQ 单聊/群聊消息事件后，已具备调用 MiniClaw 并被动回复的代码链路。
+- workspace 已自动初始化 `sessions`、`memory`、`state`、`cron`、`skills` 目录，以及 `AGENTS.md`、`USER.md`、`HEARTBEAT.md`。
+- 已具备 QQ 白名单、消息去重、处理中占位回复、网页授权回调页面和事件日志落盘能力。
+- 公网 HTTPS webhook 已部署，当前服务由 systemd 常驻运行。
 
 当前可直接验证：
 
@@ -169,7 +172,7 @@ CLI / daemon entry
 
 ### Phase 1: MiniMax Provider 落地
 
-- [ ] 直接复用 minimax-v 当前的 Anthropic messages 调用路径。
+- [x] 直接复用 minimax-v 当前的 Anthropic messages 调用路径。
 - [x] 抽出 MiniMaxClient 接口，屏蔽 HTTP 细节。
 - [x] 支持非流式响应，先把稳定性跑通。
 - [ ] 再补流式响应和 tool use 解析。
@@ -181,11 +184,10 @@ CLI / daemon entry
 
 ### Phase 2: Agent Runtime 最小闭环
 
-- [ ] 搬运或重写 minimax-v 的 tool loop，保留多轮执行能力。
 - [x] 搬运或重写 minimax-v 的 tool loop，保留多轮执行能力。
 - [x] 实现最小工具集：read_file、write_file、list_dir、exec、grep_search。
-- [ ] 增加 workspace 限制与危险命令黑名单。
-- [ ] 增加 session history 持久化。
+- [x] 增加 workspace 限制与危险命令黑名单。
+- [x] 增加 session history 持久化。
 - [ ] 增加 notes / todo 两个轻量持久化能力。
 - [ ] 增加统一 command executor，避免每个 channel 自己解析命令。
 
@@ -195,32 +197,32 @@ CLI / daemon entry
 
 ### Phase 3: QQ Channel MVP
 
-- [ ] 确认 QQ 开放平台接入方式：事件回调、签名校验、access token 获取、消息发送接口。
+- [x] 确认 QQ 开放平台接入方式：事件回调、签名校验、access token 获取、消息发送接口。
 - [ ] 定义 ChannelAdapter 接口：start、stop、handle_event、send_message。
-- [ ] 实现 QQ inbound event -> internal message 的转换。
-- [ ] 实现 internal response -> QQ message 的发送。
-- [ ] 加 allow_from 白名单。
-- [ ] 增加最小去重和幂等，避免回调重放导致重复回复。
-- [ ] 增加长任务兜底策略：先回“处理中”，后续再补发结果，避免平台超时。
+- [x] 实现 QQ inbound event -> internal message 的转换。
+- [x] 实现 internal response -> QQ message 的发送。
+- [x] 加 allow_from 白名单。
+- [x] 增加最小去重和幂等，避免回调重放导致重复回复。
+- [x] 增加长任务兜底策略：先回“处理中”，后续再补发结果，避免平台超时。
 
 交付标准：QQ 上发一句话，能得到 MiniMax 回复；复杂请求能触发工具循环并回传结果。
 
-当前状态：access token、bot profile、webhook 验证签名、事件 ACK、本地事件到 MiniClaw 回复链路均已实现。真正的端到端联调仍需要一个可被 QQ 平台访问的公网 HTTPS 回调地址，或者改走 WebSocket 在线模式。
+当前状态：access token、bot profile、webhook 验证签名、事件 ACK、本地事件到 MiniClaw 回复链路均已实现，公网 HTTPS 回调地址也已部署。后续重点是补更完整的真实消息回归验证与日志观测，而不是再补一套接入方式。
 
 ### Phase 4: Gateway 与服务化运行
 
-- [ ] 实现 gateway 子命令，负责启动 QQ channel 和 agent service。
+- [x] 实现 gateway 子命令，负责启动 QQ channel 和 agent service。
 - [ ] 把 channel 与 agent 解耦，通过内部 event bus 或简化 router 连接。
-- [ ] 增加 health/status 输出。
-- [ ] 增加基本日志，包括请求 ID、channel、session、耗时、错误。
+- [x] 增加 health/status 输出。
+- [x] 增加基本日志，包括请求 ID、channel、session、耗时、错误。
 - [ ] 增加优雅退出和 token 缓存刷新。
 
 交付标准：可以常驻运行，不只是命令行单次问答。
 
 ### Phase 5: PicoClaw 风格工作区能力
 
-- [ ] 初始化 workspace 目录结构：sessions、memory、state、cron、skills。
-- [ ] 增加 AGENTS.md、USER.md、HEARTBEAT.md 的读取约定。
+- [x] 初始化 workspace 目录结构：sessions、memory、state、cron、skills。
+- [x] 增加 AGENTS.md、USER.md、HEARTBEAT.md 的读取约定。
 - [ ] 让 system prompt 能叠加 workspace 里的 agent instructions。
 - [ ] 增加定时任务最小实现，先支持简单 cron 或 interval。
 - [ ] 增加状态文件，记录最近 channel / peer / active session。
@@ -229,7 +231,8 @@ CLI / daemon entry
 
 ### Phase 6: 稳定性与可维护性
 
-- [ ] 为 provider、tools、qq adapter、session store 写单测。
+- [x] 为 tools、qq adapter、session store 写基础单测。
+- [ ] 为 provider 补单测。
 - [ ] 增加集成测试：本地 prompt -> tool call -> result。
 - [ ] 增加模拟 QQ webhook 测试。
 - [ ] 控制二进制体积与启动时间，避免为了抽象把 PicoClaw 的轻量优势做没。
@@ -274,12 +277,11 @@ CLI / daemon entry
 
 ## 当前最合理的下一步
 
-如果马上开工，顺序建议固定为：
+当前主链路已经具备，本阶段更合理的顺序是：
 
-1. 从 minimax-v 中抽取 config.v、client.v、tools.v、sessions.v 相关能力。
-2. 在 MiniClaw 建出最小 CLI 和 workspace bootstrap。
-3. 先跑通本地 agent 模式。
-4. 再接 QQ gateway。
-5. 最后补 cron、memory、skills。
+1. 补 QQ webhook 和 gateway 的回归测试，先把现有能力守住。
+2. 增加 health / metrics / 错误观测，缩短真实联调排障时间。
+3. 继续收敛 provider 错误处理、超时和重试策略。
+4. 再考虑 notes / todo / cron 这类增强能力。
 
-这条路线最稳，也最符合“实用为主”的要求。
+这样能先稳住“可用的个人 QQ Agent”，再逐步往 PicoClaw 的长期工作区能力靠近。

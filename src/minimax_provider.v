@@ -4,6 +4,8 @@ import net.http
 import os
 import time
 
+const tool_iteration_error_prefix = 'tool iteration limit reached'
+
 fn call_minimax_text(config Config, prompt string) !string {
 	if config.api_key.len == 0 {
 		return error('MINICLAW_API_KEY is not configured')
@@ -52,12 +54,16 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 		content: prompt
 	}
 	mut iteration := 0
+	mut last_assistant_text := ''
+	mut last_tool_uses := []ToolUse{}
 	for iteration < max_tool_iterations {
 		body_json := build_minimax_agent_request_json(config, messages)
 		response_body := send_minimax_request(config, body_json)!
 		content_json := extract_content_array(response_body)
 		text := extract_text_blocks(content_json).trim_space()
 		tool_uses := extract_tool_use_blocks(content_json)
+		last_assistant_text = text
+		last_tool_uses = tool_uses.clone()
 		messages << AgentMessage{
 			role:         'assistant'
 			content:      text
@@ -79,7 +85,56 @@ fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder Se
 		}
 		iteration++
 	}
-	return error('tool iteration limit reached')
+	return error(build_tool_iteration_limit_error(iteration, last_assistant_text, last_tool_uses))
+}
+
+fn build_tool_iteration_limit_error(iteration int, assistant_text string, tool_uses []ToolUse) string {
+	mut details := []string{}
+	details << 'after ${iteration} rounds'
+	tool_names := summarize_tool_use_names(tool_uses)
+	if tool_names.len > 0 {
+		details << 'last tools: ${tool_names}'
+	}
+	text_preview := limit_error_preview(assistant_text)
+	if text_preview.len > 0 {
+		details << 'last assistant text: ${text_preview}'
+	}
+	return tool_iteration_error_prefix + ' (' + details.join('; ') + ')'
+}
+
+fn summarize_tool_use_names(tool_uses []ToolUse) string {
+	if tool_uses.len == 0 {
+		return ''
+	}
+	mut names := []string{}
+	for tool in tool_uses {
+		if tool.name.len == 0 {
+			continue
+		}
+		names << tool.name
+		if names.len == 4 {
+			break
+		}
+	}
+	if names.len == 0 {
+		return ''
+	}
+	mut summary := names.join(', ')
+	if tool_uses.len > names.len {
+		summary += ' +${tool_uses.len - names.len} more'
+	}
+	return summary
+}
+
+fn limit_error_preview(value string) string {
+	preview := value.replace('\n', ' ').replace('\r', ' ').trim_space()
+	if preview.len == 0 {
+		return ''
+	}
+	if preview.len > 120 {
+		return preview[..120] + '...'
+	}
+	return preview
 }
 
 fn send_minimax_request(config Config, body_json string) !string {

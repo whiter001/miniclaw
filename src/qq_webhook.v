@@ -107,12 +107,30 @@ fn handle_qq_message_event(config Config, payload string) ! {
 	}
 	mut recorder := new_session_recorder(config)!
 	response := run_minimax_agent_in_session(config, prompt, mut recorder) or {
-		failure_message := '处理失败，请稍后重试。'
+		failure_message := build_qq_failure_message(err.msg())
+		append_qq_agent_error_log(config, target, recorder.session_id, prompt, err.msg()) or {}
 		send_qq_reply(config, token.access_token, target, failure_message, 2) or {}
 		return err
 	}
 	_ := send_qq_reply(config, token.access_token, target, response, 2)!
 	append_qq_event_log(config, 'reply_sent', '{"scene":"${escape_json_string(target.scene)}","msg_id":"${escape_json_string(target.msg_id)}","content":"${escape_json_string(response)}"}') or {}
+}
+
+fn build_qq_failure_message(error_message string) string {
+	if error_message.contains(tool_iteration_error_prefix) {
+		return '这个问题触发了过多工具调用，我没能在限定步数内完成。请把问题拆小一点，或直接说明要查看的文件、目录或命令。'
+	}
+	return '处理失败，请稍后重试。'
+}
+
+fn append_qq_agent_error_log(config Config, target QqReplyTarget, session_id string, prompt string, error_message string) ! {
+	kind := if error_message.contains(tool_iteration_error_prefix) {
+		'event_tool_iteration_limit'
+	} else {
+		'event_error'
+	}
+	payload := '{"scene":"${escape_json_string(target.scene)}","msg_id":"${escape_json_string(target.msg_id)}","session_id":"${escape_json_string(session_id)}","prompt":"${escape_json_string(limit_error_preview(prompt))}","error":"${escape_json_string(error_message)}"}'
+	append_qq_event_log(config, kind, payload)!
 }
 
 fn mark_qq_message_seen(config Config, msg_id string) !bool {
