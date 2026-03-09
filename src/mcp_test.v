@@ -50,3 +50,18 @@ fn test_build_effective_tools_schema_json_appends_mcp_tools() {
 	assert tools_json.contains('"name":"list_dir"')
 	assert tools_json.contains('"name":"web_search"')
 }
+
+// 验证 MCP 进程会启用独立进程组，方便关闭 uvx 时一并清理其子进程。
+fn test_build_mcp_process_enables_process_group() {
+	server := McpServer{
+		command: 'uvx'
+		args:    ['--native-tls', 'minimax-coding-plan-mcp', '-y']
+		env:     {
+			'MINIMAX_API_KEY': 'placeholder'
+		}
+	}
+	proc := build_mcp_process(server, 'uvx')
+	assert proc.use_pgroup
+	assert proc.use_stdio_ctl
+	assert proc.args == ['--native-tls', 'minimax-coding-plan-mcp', '-y']
+}

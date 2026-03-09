@@ -418,16 +418,7 @@ fn find_json_object(block string, key string) ?int {
 // 启动单个 MCP 子进程并完成初始化。
 fn start_mcp_server(mut server McpServer) {
 	cmd := os.find_abs_path_of_executable(server.command) or { return }
-	mut proc := os.new_process(cmd)
-	proc.set_args(server.args)
-	proc.set_redirect_stdio()
-	if server.env.len > 0 {
-		mut full_env := os.environ()
-		for key, value in server.env {
-			full_env[key] = value
-		}
-		proc.set_environment(full_env)
-	}
+	mut proc := build_mcp_process(server, cmd)
 	proc.run()
 	if !proc.is_alive() {
 		return
@@ -438,6 +429,22 @@ fn start_mcp_server(mut server McpServer) {
 		return
 	}
 	server.is_connected = true
+}
+
+fn build_mcp_process(server McpServer, command_path string) &os.Process {
+	mut proc := os.new_process(command_path)
+	// MCP 启动链会经由 uvx 再拉起 python 子进程，需要独立进程组才能一并清理。
+	proc.use_pgroup = true
+	proc.set_args(server.args)
+	proc.set_redirect_stdio()
+	if server.env.len > 0 {
+		mut full_env := os.environ()
+		for key, value in server.env {
+			full_env[key] = value
+		}
+		proc.set_environment(full_env)
+	}
+	return proc
 }
 
 // 在限定时间内等待 MCP 服务完成初始化并返回工具列表。
@@ -470,9 +477,12 @@ fn stop_mcp_server(mut server McpServer) {
 		return
 	}
 	if server.process.is_alive() {
-		server.process.signal_kill()
+		server.process.signal_pgkill()
 		server.process.wait()
 	}
+	server.process.close()
+	server.process = unsafe { nil }
+	server.tools = []McpTool{}
 	server.is_connected = false
 }
 
