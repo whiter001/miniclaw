@@ -1,5 +1,6 @@
 .DS_Store
 miniclaw
+miniclaw.exe
 .vmodules/
 node_modules/
 dist/
