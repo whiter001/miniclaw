@@ -50,7 +50,7 @@ fn default_config() Config {
 		mcp_config_path:               os.join_path(os.home_dir(), '.config', 'miniclaw',
 			'mcp.json')
 		api_key:                       ''
-		api_url:                       'https://api.minimaxi.com/anthropic/v1/messages'
+		api_url:                       'https://api.minimaxi.com/anthropic'
 		model:                         'MiniMax-M2.7'
 		temperature:                   0.7
 		max_tokens:                    8192

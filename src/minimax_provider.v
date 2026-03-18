@@ -5,6 +5,7 @@ import os
 import time
 
 const tool_iteration_error_prefix = 'tool iteration limit reached'
+const anthropic_default_top_p = 1.0
 
 fn call_minimax_text(config Config, prompt string) !string {
 	// 发起一次纯文本 MiniMax 请求。
@@ -12,13 +13,14 @@ fn call_minimax_text(config Config, prompt string) !string {
 		return error('MINICLAW_API_KEY is not configured')
 	}
 	body_json := build_minimax_request_json(config, prompt)
+	api_url := resolve_anthropic_messages_url(config.api_url)
 	mut headers := http.new_header()
 	headers.add(.authorization, 'Bearer ${config.api_key}')
 	headers.add(.content_type, 'application/json')
 
 	mut request := http.Request{
 		method:        .post
-		url:           config.api_url
+		url:           api_url
 		header:        headers
 		data:          body_json
 		read_timeout:  time.second * config.request_timeout
@@ -168,13 +170,14 @@ fn send_minimax_request(config Config, body_json string) !string {
 	if config.api_key.len == 0 {
 		return error('MINICLAW_API_KEY is not configured')
 	}
+	api_url := resolve_anthropic_messages_url(config.api_url)
 	mut headers := http.new_header()
 	headers.add(.authorization, 'Bearer ${config.api_key}')
 	headers.add(.content_type, 'application/json')
 
 	mut request := http.Request{
 		method:        .post
-		url:           config.api_url
+		url:           api_url
 		header:        headers
 		data:          body_json
 		read_timeout:  time.second * config.request_timeout
@@ -195,9 +198,9 @@ fn send_minimax_request(config Config, body_json string) !string {
 fn send_minimax_request_via_curl(config Config, body_json string) !string {
 	// 使用 curl 发送请求，规避部分环境下的 HTTP 客户端兼容问题。
 	status_marker := '__MINICLAW_HTTP_STATUS__:'
-	command := 'curl -sS --max-time ${config.request_timeout} -X POST ' +
-		shell_quote(config.api_url) + ' -H ' +
-		shell_quote('Authorization: Bearer ${config.api_key}') + ' -H ' +
+	api_url := resolve_anthropic_messages_url(config.api_url)
+	command := 'curl -sS --max-time ${config.request_timeout} -X POST ' + shell_quote(api_url) +
+		' -H ' + shell_quote('Authorization: Bearer ${config.api_key}') + ' -H ' +
 		shell_quote('Content-Type: application/json') + ' --data ' + shell_quote(body_json) +
 		' -w ' + shell_quote('\n${status_marker}%{http_code}')
 	result := os.execute(command)
@@ -218,7 +221,7 @@ fn send_minimax_request_via_curl(config Config, body_json string) !string {
 
 fn build_minimax_request_json(config Config, prompt string) string {
 	// 构建单轮文本请求体。
-	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature}'
+	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature},"top_p":${anthropic_default_top_p}'
 	system_prompt := load_system_prompt(config)
 	if system_prompt.len > 0 {
 		body_json += ',"system":"${escape_json_string(system_prompt)}"'
@@ -230,7 +233,7 @@ fn build_minimax_request_json(config Config, prompt string) string {
 
 fn build_minimax_agent_request_json(config Config, messages []AgentMessage, mut mcp_manager McpManager) string {
 	// 构建包含工具声明和消息历史的 Agent 请求体。
-	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature}'
+	mut body_json := '{"model":"${escape_json_string(config.model)}","max_tokens":${config.max_tokens},"temperature":${config.temperature},"top_p":${anthropic_default_top_p}'
 	system_prompt := load_system_prompt(config)
 	default_system := 'You are MiniClaw, a local AI agent. When you need workspace information, prefer using tools instead of guessing. Only access files inside the workspace.'
 	effective_system := if system_prompt.len > 0 {
@@ -253,6 +256,17 @@ fn build_minimax_agent_request_json(config Config, messages []AgentMessage, mut 
 	}
 	body_json += ']}'
 	return body_json
+}
+
+fn resolve_anthropic_messages_url(api_url string) string {
+	trimmed := api_url.trim_space().trim_right('/')
+	if trimmed.ends_with('/messages') {
+		return trimmed
+	}
+	if trimmed.ends_with('/anthropic') || trimmed.ends_with('/anthropic/v1') {
+		return trimmed + '/messages'
+	}
+	return trimmed
 }
 
 fn load_system_prompt(config Config) string {
