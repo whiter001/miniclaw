@@ -20,3 +20,16 @@ memory_prune_keep_days=9
 	assert config.memory_significance_threshold == 6
 	assert config.memory_prune_keep_days == 9
 }
+
+fn test_parse_config_content_applies_anthropic_base_url_aliases() {
+	base := default_config()
+	assert base.base_url == 'https://api.minimaxi.com/anthropic'
+
+	config_from_base := parse_config_content('base_url=https://example.com/anthropic',
+		base)
+	assert config_from_base.base_url == 'https://example.com/anthropic'
+
+	config_from_legacy := parse_config_content('api_url=https://legacy.example.com/anthropic',
+		base)
+	assert config_from_legacy.base_url == 'https://legacy.example.com/anthropic'
+}

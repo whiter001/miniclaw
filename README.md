@@ -69,7 +69,8 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 常用字段说明：
 
 - `api_key`: MiniMax API Key，本地填写。
-- `api_url`: 默认使用 `https://api.minimaxi.com/anthropic`，运行时会自动归一化到 Anthropic `messages` 接口。
+- `base_url`: 默认使用 `https://api.minimaxi.com/anthropic`，运行时会自动归一化到 Anthropic `messages` 接口。
+- `ANTHROPIC_BASE_URL` / `MINICLAW_API_URL`: 可选环境变量覆盖 `base_url`，前者与文档保持一致，后者作为兼容别名保留。
 - `model`: 默认是 `MiniMax-M2.7`。
 - `mcp_config_path`: 额外 MCP 服务配置文件，默认是 `~/.config/miniclaw/mcp.json`。
 - `enable_mcp`: 是否启用内置 MiniMax MCP，支持 `web_search`、`understand_image`。

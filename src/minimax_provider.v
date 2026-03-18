@@ -13,7 +13,7 @@ fn call_minimax_text(config Config, prompt string) !string {
 		return error('MINICLAW_API_KEY is not configured')
 	}
 	body_json := build_minimax_request_json(config, prompt)
-	api_url := resolve_anthropic_messages_url(config.api_url)
+	api_url := resolve_anthropic_messages_url(config.base_url)
 	mut headers := http.new_header()
 	headers.add(.authorization, 'Bearer ${config.api_key}')
 	headers.add(.content_type, 'application/json')
@@ -170,7 +170,7 @@ fn send_minimax_request(config Config, body_json string) !string {
 	if config.api_key.len == 0 {
 		return error('MINICLAW_API_KEY is not configured')
 	}
-	api_url := resolve_anthropic_messages_url(config.api_url)
+	api_url := resolve_anthropic_messages_url(config.base_url)
 	mut headers := http.new_header()
 	headers.add(.authorization, 'Bearer ${config.api_key}')
 	headers.add(.content_type, 'application/json')
@@ -198,7 +198,7 @@ fn send_minimax_request(config Config, body_json string) !string {
 fn send_minimax_request_via_curl(config Config, body_json string) !string {
 	// 使用 curl 发送请求，规避部分环境下的 HTTP 客户端兼容问题。
 	status_marker := '__MINICLAW_HTTP_STATUS__:'
-	api_url := resolve_anthropic_messages_url(config.api_url)
+	api_url := resolve_anthropic_messages_url(config.base_url)
 	command := 'curl -sS --max-time ${config.request_timeout} -X POST ' + shell_quote(api_url) +
 		' -H ' + shell_quote('Authorization: Bearer ${config.api_key}') + ' -H ' +
 		shell_quote('Content-Type: application/json') + ' --data ' + shell_quote(body_json) +

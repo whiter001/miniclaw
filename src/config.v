@@ -10,7 +10,7 @@ pub mut:
 	config_path                   string
 	mcp_config_path               string
 	api_key                       string
-	api_url                       string
+	base_url                      string
 	model                         string
 	temperature                   f64
 	max_tokens                    int
@@ -50,7 +50,7 @@ fn default_config() Config {
 		mcp_config_path:               os.join_path(os.home_dir(), '.config', 'miniclaw',
 			'mcp.json')
 		api_key:                       ''
-		api_url:                       'https://api.minimaxi.com/anthropic'
+		base_url:                      'https://api.minimaxi.com/anthropic'
 		model:                         'MiniMax-M2.7'
 		temperature:                   0.7
 		max_tokens:                    8192
@@ -134,8 +134,11 @@ fn apply_config_value(mut config Config, key string, value string) {
 		'api_key' {
 			config.api_key = value
 		}
+		'base_url' {
+			config.base_url = value
+		}
 		'api_url' {
-			config.api_url = value
+			config.base_url = value
 		}
 		'model' {
 			config.model = value
@@ -273,8 +276,11 @@ fn apply_env_overrides(mut config Config) {
 	if value := os.getenv_opt('MINICLAW_API_KEY') {
 		config.api_key = value
 	}
+	if value := os.getenv_opt('ANTHROPIC_BASE_URL') {
+		config.base_url = value
+	}
 	if value := os.getenv_opt('MINICLAW_API_URL') {
-		config.api_url = value
+		config.base_url = value
 	}
 	if value := os.getenv_opt('MINICLAW_MODEL') {
 		config.model = value
@@ -414,7 +420,7 @@ fn write_default_config(config Config) ! {
 	// 把默认配置写入本地配置文件。
 	ensure_config_parent_dir(config.config_path)!
 	default_content :=
-		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'mcp_config_path=${config.mcp_config_path}', 'api_key=', 'api_url=${config.api_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'enable_mcp=${config.enable_mcp}', 'mcp_base_path=${config.mcp_base_path}', 'mcp_resource_mode=${config.mcp_resource_mode}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}', 'memory_recent_days=${config.memory_recent_days}', 'memory_recent_chars=${config.memory_recent_chars}', 'memory_summary_max_lines=${config.memory_summary_max_lines}', 'memory_summary_max_chars=${config.memory_summary_max_chars}', 'memory_daily_entry_max_chars=${config.memory_daily_entry_max_chars}', 'memory_significance_threshold=${config.memory_significance_threshold}', 'memory_prune_keep_days=${config.memory_prune_keep_days}'].join('\n') +
+		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'mcp_config_path=${config.mcp_config_path}', 'api_key=', 'base_url=${config.base_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'enable_mcp=${config.enable_mcp}', 'mcp_base_path=${config.mcp_base_path}', 'mcp_resource_mode=${config.mcp_resource_mode}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}', 'memory_recent_days=${config.memory_recent_days}', 'memory_recent_chars=${config.memory_recent_chars}', 'memory_summary_max_lines=${config.memory_summary_max_lines}', 'memory_summary_max_chars=${config.memory_summary_max_chars}', 'memory_daily_entry_max_chars=${config.memory_daily_entry_max_chars}', 'memory_significance_threshold=${config.memory_significance_threshold}', 'memory_prune_keep_days=${config.memory_prune_keep_days}'].join('\n') +
 		'\n'
 	os.write_file(config.config_path, default_content)!
 }

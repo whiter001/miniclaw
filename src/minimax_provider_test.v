@@ -5,6 +5,7 @@ fn test_build_minimax_request_json_uses_anthropic_fields() {
 		model:       'MiniMax-M2.7'
 		max_tokens:  512
 		temperature: 0.7
+		base_url:    'https://api.minimaxi.com/anthropic'
 		workspace:   '/tmp/miniclaw-workspace'
 	}
 	body := build_minimax_request_json(config, 'Hello, world')

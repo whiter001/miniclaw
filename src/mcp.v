@@ -146,7 +146,7 @@ fn init_mcp_manager(config Config) McpManager {
 fn build_builtin_mcp_env(config Config) map[string]string {
 	mut env := {
 		'MINIMAX_API_KEY':  config.api_key
-		'MINIMAX_API_HOST': derive_api_host(config.api_url)
+		'MINIMAX_API_HOST': derive_api_host(resolve_anthropic_messages_url(config.base_url))
 	}
 	base_path := effective_mcp_base_path(config)
 	if base_path.len > 0 {
