@@ -69,7 +69,7 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 
 - `api_key`: MiniMax API Key，本地填写。
 - `api_url`: 默认使用 MiniMax Anthropic 兼容接口。
-- `model`: 默认是 `MiniMax-M2.5`。
+- `model`: 默认是 `MiniMax-M2.7`。
 - `mcp_config_path`: 额外 MCP 服务配置文件，默认是 `~/.config/miniclaw/mcp.json`。
 - `enable_mcp`: 是否启用内置 MiniMax MCP，支持 `web_search`、`understand_image`。
 - `mcp_base_path`: MiniMax MCP 的本地输出目录；留空时默认落到 workspace 下的 `state/minimax-mcp`。

@@ -7,7 +7,7 @@ mcp_config_path=~/.config/miniclaw/mcp.json
 
 api_key=
 api_url=https://api.minimaxi.com/anthropic/v1/messages
-model=MiniMax-M2.5
+model=MiniMax-M2.7
 temperature=0.7
 max_tokens=8192
 request_timeout=120
