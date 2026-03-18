@@ -47,7 +47,11 @@ fn run_minimax_agent(config Config, prompt string) !string {
 fn run_minimax_agent_in_session(config Config, prompt string, mut recorder SessionRecorder) !string {
 	// 在现有会话记录器上继续运行 Agent。
 	recorder.append_message('message', 'user', prompt) or {}
-	return run_minimax_agent_with_recorder(config, prompt, mut recorder)
+	response := run_minimax_agent_with_recorder(config, prompt, mut recorder) or { return err }
+	append_daily_memory_entry(config, prompt, response) or {
+		eprintln('failed to persist memory entry: ${err.msg()}')
+	}
+	return response
 }
 
 fn run_minimax_agent_with_recorder(config Config, prompt string, mut recorder SessionRecorder) !string {
@@ -252,12 +256,40 @@ fn build_minimax_agent_request_json(config Config, messages []AgentMessage, mut 
 }
 
 fn load_system_prompt(config Config) string {
-	// 读取工作区中的 AGENTS.md 作为系统提示补充。
+	// 读取工作区中的 AGENTS.md 和长期记忆作为系统提示补充。
+	memory_settings := memory_settings_from_config(config)
+	mut parts := []string{}
 	agents_path := os.join_path(config.workspace, 'AGENTS.md')
 	if os.exists(agents_path) {
-		return os.read_file(agents_path) or { '' }
+		if content := os.read_file(agents_path) {
+			trimmed := content.trim_space()
+			if trimmed.len > 0 {
+				parts << trimmed
+			}
+		}
 	}
-	return ''
+	memory_context := memory_store_for_workspace(config.workspace).context_with_settings(memory_settings)
+	if memory_context.len > 0 {
+		parts << memory_context
+	}
+	return parts.join('\n\n---\n\n')
+}
+
+fn append_daily_memory_entry(config Config, prompt string, response string) ! {
+	now := time.now()
+	memory_settings := memory_settings_from_config(config)
+	mut entry := []string{}
+	entry << '## ' + memory_date_label(now) + ' ' + now.str().all_after(' ')
+	entry << ''
+	entry << '### User'
+	entry << limit_text(prompt.trim_space(), memory_settings.daily_entry_max_chars)
+	entry << ''
+	entry << '### Assistant'
+	entry << limit_text(response.trim_space(), memory_settings.daily_entry_max_chars)
+	store := memory_store_for_workspace(config.workspace)
+	day_entry := entry.join('\n')
+	store.append_today(day_entry)!
+	store.append_summary_excerpt_with_settings(day_entry, memory_settings)!
 }
 
 fn parse_anthropic_text_response(body string) string {

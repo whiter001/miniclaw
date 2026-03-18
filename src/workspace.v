@@ -20,6 +20,7 @@ fn ensure_workspace(config Config) ! {
 	ensure_workspace_file(os.join_path(config.workspace, 'AGENTS.md'), '# MiniClaw Agent Guide\n')!
 	ensure_workspace_file(os.join_path(config.workspace, 'USER.md'), '# User Preferences\n')!
 	ensure_workspace_file(os.join_path(config.workspace, 'HEARTBEAT.md'), '# Periodic Tasks\n')!
+	memory_store_for_workspace(config.workspace).ensure_defaults()!
 }
 
 fn ensure_workspace_file(path string, content string) ! {

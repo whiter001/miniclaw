@@ -40,6 +40,9 @@ fn main() {
 		'agent' {
 			run_agent(effective_config, command_args)
 		}
+		'memory' {
+			run_memory(effective_config, command_args)
+		}
 		else {
 			eprintln('unknown command: ${command}')
 			print_help()
@@ -80,6 +83,7 @@ fn print_help() {
 	println('  miniclaw status               Show current configuration status')
 	println('  miniclaw gateway [--once] [--webhook-port PORT]   Start QQ gateway bootstrap or webhook server')
 	println('  miniclaw agent [-p PROMPT] [--workspace PATH] [--mcp]    Run agent')
+	println('  miniclaw memory [show|set|append|today|summarize|compact|prune|clear]    Manage memory files')
 	println('  miniclaw --version            Show version')
 	println('')
 	println('Environment variables:')

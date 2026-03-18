@@ -20,6 +20,7 @@
 - `miniclaw gateway` 已支持启动本地 QQ webhook 服务，完成回调验证签名和事件 ACK。
 - webhook 收到 QQ 单聊/群聊消息事件后，已具备调用 MiniClaw 并被动回复的代码链路。
 - workspace 已自动初始化 `sessions`、`memory`、`state`、`cron`、`skills` 目录，以及 `AGENTS.md`、`USER.md`、`HEARTBEAT.md`。
+- 记忆系统已支持 `memory show|set|append|today|summarize|compact|prune|clear`，并把长期记忆、摘要和近期日记一起注入系统提示。
 - 已具备 QQ 白名单、消息去重、处理中占位回复、网页授权回调页面和事件日志落盘能力。
 - 公网 HTTPS webhook 已部署，当前服务由 systemd 常驻运行。
 
@@ -82,6 +83,40 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 - `qq_allow_users`: 允许触发机器人的单聊用户列表，多个值用英文逗号分隔；留空表示不限制。
 - `qq_allow_groups`: 允许触发机器人的群列表，多个值用英文逗号分隔；留空表示不限制。
 - `qq_processing_text`: 长任务开始处理时先回复的占位文案。
+- `memory_recent_days`: 系统提示里最近日记默认回看天数，默认是 `2`。
+- `memory_recent_chars`: 系统提示里近期日记默认字符预算，默认是 `1600`。
+- `memory_summary_max_lines`: 记忆摘要最大行数，默认是 `20`。
+- `memory_summary_max_chars`: 记忆摘要最大字符数，默认是 `2000`。
+- `memory_daily_entry_max_chars`: 单次写入日记时，单条 prompt/response 的截断长度，默认是 `500`。
+- `memory_significance_threshold`: 记忆摘要的最低重要性分数，默认是 `3`。
+- `memory_prune_keep_days`: `memory prune` 默认保留的天数，默认是 `14`。
+
+## 记忆系统
+
+MiniClaw 会把 workspace 下的记忆拆成三层：
+
+- `memory/MEMORY.md`: 长期记忆，适合保存稳定偏好、约定、结论。
+- `memory/SUMMARY.md`: 从近期日记里提炼出来的高价值摘要。
+- `memory/YYYYMM/YYYYMMDD.md`: 按天落盘的原始日记，包含最近对话和响应。
+
+当前默认会在这些场景自动使用记忆：
+
+- `miniclaw agent` 运行时会把长期记忆、摘要和最近日记注入系统提示。
+- `miniclaw agent` 成功返回后，会自动把本轮 prompt 和 response 写入当天日记，并补充摘要。
+- `miniclaw memory show` 会直接展示当前拼装后的记忆上下文。
+
+常用命令：
+
+- `miniclaw memory show`: 查看当前记忆上下文。
+- `miniclaw memory set -p "..."`: 覆盖长期记忆。
+- `miniclaw memory append -p "..."`: 追加长期记忆。
+- `miniclaw memory today -p "..."`: 追加当天日记。
+- `miniclaw memory summarize [days]`: 基于最近几天日记刷新摘要。
+- `miniclaw memory compact`: 去重并压缩长期记忆。
+- `miniclaw memory prune [days]`: 删除过旧的日记文件。
+- `miniclaw memory clear`: 清空长期记忆和摘要。
+
+建议只在你确实需要调整行为时改这些参数，默认值已经适合一般的工作区使用场景。
 
 ## MCP 支持
 
