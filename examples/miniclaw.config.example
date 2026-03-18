@@ -9,6 +9,7 @@ api_key=
 base_url=https://api.minimaxi.com/anthropic
 model=MiniMax-M2.7
 temperature=0.7
+# max_tokens 是单次回复的输出上限，不是输入 + 输出总和
 max_tokens=8192
 request_timeout=120
 max_tool_iterations=100

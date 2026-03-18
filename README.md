@@ -72,6 +72,7 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 - `base_url`: 默认使用 `https://api.minimaxi.com/anthropic`，运行时会自动归一化到 Anthropic `messages` 接口。
 - `ANTHROPIC_BASE_URL` / `MINICLAW_API_URL`: 可选环境变量覆盖 `base_url`，前者与文档保持一致，后者作为兼容别名保留。
 - `model`: 默认是 `MiniMax-M2.7`。
+- `max_tokens`: 单次回复的输出上限，不是“输入 + 输出”的总上下文长度。默认是 `8192`，需要按模型能力和实际场景调整。
 - `mcp_config_path`: 额外 MCP 服务配置文件，默认是 `~/.config/miniclaw/mcp.json`。
 - `enable_mcp`: 是否启用内置 MiniMax MCP，支持 `web_search`、`understand_image`。
 - `mcp_base_path`: MiniMax MCP 的本地输出目录；留空时默认落到 workspace 下的 `state/minimax-mcp`。
@@ -246,7 +247,7 @@ CLI / daemon entry
 - [x] 支持非流式响应，先把稳定性跑通。
 - [ ] 再补流式响应和 tool use 解析。
 - [ ] 定义统一 message schema，避免 channel 层和 provider 层耦合。
-- [x] 支持 model、api_key、api_url、max_tokens、temperature、timeout 配置项。
+- [x] 支持 model、api_key、api_url、max_tokens（单次输出上限）、temperature、timeout 配置项。
 - [ ] 对 MiniMax 的错误码、限流、超时做统一重试和报错包装。
 
 交付标准：CLI 模式下可以稳定完成一轮和多轮工具调用。
