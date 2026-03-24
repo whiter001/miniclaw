@@ -42,6 +42,7 @@ fn run_status(config Config) int {
 	println('qq auth callback: http://${config.qq_webhook_host}:${config.qq_webhook_port}${config.qq_auth_callback_path}')
 	println('qq allow users: ${config.qq_allow_users}')
 	println('qq allow groups: ${config.qq_allow_groups}')
+	println('weixin configured: ${config.weixin_port > 0 && config.weixin_base_path.len > 0}')
 	println('workspace ready: ${os.exists(config.workspace)}')
 	return 0
 }
@@ -82,6 +83,99 @@ fn run_gateway(config Config, args []string) int {
 		eprintln(err.msg())
 		return 1
 	}
+	return 0
+}
+
+fn run_weixin(config Config, args []string) int {
+	// 启动最小可用的 Weixin 后端协议服务。
+	if ensure_runtime_ready(config) != 0 {
+		return 1
+	}
+	if args.len > 0 && args[0] == 'send' {
+		return run_weixin_send(config, args[1..])
+	}
+	if args.len > 0 && args[0] == 'reply' {
+		return run_weixin_reply(config, args[1..])
+	}
+	if args.len > 0 && args[0] == 'ingest' {
+		return run_weixin_ingest(config, args[1..])
+	}
+	base_path := normalize_weixin_base_path(config.weixin_base_path)
+	println('Weixin backend API bootstrap ok.')
+	println('endpoints:')
+	println('  POST ${weixin_endpoint_url(config, base_path, 'getUpdates')}')
+	println('  POST ${weixin_endpoint_url(config, base_path, 'sendMessage')}')
+	println('  POST ${weixin_endpoint_url(config, base_path, 'getUploadUrl')}')
+	println('  POST ${weixin_endpoint_url(config, base_path, 'getConfig')}')
+	println('  POST ${weixin_endpoint_url(config, base_path, 'sendTyping')}')
+	if has_flag(args, '--once') {
+		println('bootstrap-only mode finished.')
+		return 0
+	}
+	println('starting local Weixin backend on ${weixin_base_url(config, base_path)}')
+	start_weixin_gateway_server(config) or {
+		eprintln(err.msg())
+		return 1
+	}
+	return 0
+}
+
+fn run_weixin_send(config Config, args []string) int {
+	// 将一条文本消息排入 Weixin 待发送队列。
+	to_user_id := parse_named_arg(args, '--to-user')
+	text := parse_prompt_arg(args)
+	if to_user_id.len == 0 || text.len == 0 {
+		eprintln('usage: miniclaw weixin send --to-user USER_ID -p "content"')
+		return 1
+	}
+	queue_weixin_text_message(config, to_user_id, '', text) or {
+		eprintln('failed to queue weixin message: ${err.msg()}')
+		return 1
+	}
+	println('weixin message queued for ${to_user_id}')
+	return 0
+}
+
+fn run_weixin_reply(config Config, args []string) int {
+	// 运行一次 Agent，并把结果排入 Weixin 待发送队列。
+	to_user_id := parse_named_arg(args, '--to-user')
+	prompt := parse_prompt_arg(args)
+	if to_user_id.len == 0 || prompt.len == 0 {
+		eprintln('usage: miniclaw weixin reply --to-user USER_ID -p "prompt"')
+		return 1
+	}
+	mut recorder := new_session_recorder(config) or {
+		eprintln('failed to create session recorder: ${err.msg()}')
+		return 1
+	}
+	response := run_minimax_agent_in_session(config, prompt, mut recorder) or {
+		eprintln(err.msg())
+		return 1
+	}
+	queue_weixin_text_message(config, to_user_id, recorder.session_id, response) or {
+		eprintln('failed to queue weixin reply: ${err.msg()}')
+		return 1
+	}
+	println('weixin reply queued for ${to_user_id}')
+	println(response)
+	return 0
+}
+
+fn run_weixin_ingest(config Config, args []string) int {
+	// 模拟微信收到一句话，并自动把 MiniClaw 的回复排回队列。
+	from_user_id := parse_named_arg(args, '--from-user')
+	context_token := parse_named_arg(args, '--context-token')
+	prompt := parse_prompt_arg(args)
+	if from_user_id.len == 0 || prompt.len == 0 {
+		eprintln('usage: miniclaw weixin ingest --from-user USER_ID [-p "content"] [--context-token TOKEN]')
+		return 1
+	}
+	response := auto_reply_weixin_message(config, from_user_id, context_token, prompt) or {
+		eprintln('failed to auto reply weixin message: ${err.msg()}')
+		return 1
+	}
+	println('weixin auto reply queued for ${from_user_id}')
+	println(response)
 	return 0
 }
 

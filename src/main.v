@@ -37,6 +37,12 @@ fn main() {
 		'gateway' {
 			run_gateway(effective_config, command_args)
 		}
+		'channels' {
+			run_channels(effective_config, command_args)
+		}
+		'weixin' {
+			run_weixin(effective_config, command_args)
+		}
 		'agent' {
 			run_agent(effective_config, command_args)
 		}
@@ -70,6 +76,19 @@ fn apply_command_config_overrides(mut config Config, args []string) {
 			index += 2
 			continue
 		}
+		if args[index] == '--weixin-port' && index + 1 < args.len {
+			parsed := args[index + 1].int()
+			if parsed > 0 && parsed <= 65535 {
+				config.weixin_port = parsed
+			}
+			index += 2
+			continue
+		}
+		if args[index] == '--weixin-base-path' && index + 1 < args.len {
+			config.weixin_base_path = normalize_weixin_base_path(args[index + 1])
+			index += 2
+			continue
+		}
 		index++
 	}
 }
@@ -82,6 +101,10 @@ fn print_help() {
 	println('  miniclaw onboard              Initialize config and workspace')
 	println('  miniclaw status               Show current configuration status')
 	println('  miniclaw gateway [--once] [--webhook-port PORT]   Start QQ gateway bootstrap or webhook server')
+	println('  miniclaw channels status   Show OpenClaw Weixin login status')
+	println('  miniclaw channels login --channel openclaw-weixin   Start OpenClaw Weixin login flow')
+	println('  miniclaw weixin [--once] [--weixin-port PORT] [--weixin-base-path PATH]   Start Weixin backend API server')
+	println('  miniclaw weixin ingest --from-user USER_ID -p PROMPT   Simulate inbound Weixin message and auto reply')
 	println('  miniclaw agent [-p PROMPT] [--workspace PATH] [--mcp]    Run agent')
 	println('  miniclaw memory [show|set|append|today|summarize|compact|prune|clear]    Manage memory files')
 	println('  miniclaw --version            Show version')
@@ -99,4 +122,18 @@ fn print_help() {
 	println('  MINICLAW_MCP_RESOURCE_MODE')
 	println('  MINICLAW_QQ_APP_ID')
 	println('  MINICLAW_QQ_APP_SECRET')
+	println('  MINICLAW_WEIXIN_HOST')
+	println('  MINICLAW_WEIXIN_PORT')
+	println('  MINICLAW_WEIXIN_BASE_PATH')
+	println('  MINICLAW_WEIXIN_PROCESSING_TEXT')
+}
+
+fn parse_named_arg(args []string, flag string) string {
+	// 提取形式为 `--flag value` 的字符串参数。
+	for index, arg in args {
+		if arg == flag && index + 1 < args.len {
+			return args[index + 1]
+		}
+	}
+	return ''
 }

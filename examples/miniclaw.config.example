@@ -29,6 +29,11 @@ qq_allow_users=
 qq_allow_groups=
 qq_processing_text=收到，处理中，请稍候。
 
+weixin_host=127.0.0.1
+weixin_port=18081
+weixin_base_path=/weixin
+weixin_processing_text=收到，处理中，请稍候。
+
 memory_recent_days=2
 memory_recent_chars=1600
 memory_summary_max_lines=20

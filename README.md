@@ -1,6 +1,6 @@
 # MiniClaw
 
-用 V 语言复刻 PicoClaw 的实用子集，直接面向 MiniMax + QQ 场景。
+用 V 语言复刻 PicoClaw 的实用子集，直接面向 MiniMax + QQ 场景，并逐步补齐 Weixin/OpenClaw 接入。
 
 当前策略不是全量追平 PicoClaw，而是先做一个能稳定跑起来、能在 QQ 上收发消息、能调用 MiniMax 完成多轮工具型 Agent 任务的最小可用版本。
 
@@ -19,6 +19,10 @@
 - `miniclaw gateway --once` 已支持真实 QQ bootstrap：获取 access token、读取 bot profile、落盘状态。
 - `miniclaw gateway` 已支持启动本地 QQ webhook 服务，完成回调验证签名和事件 ACK。
 - webhook 收到 QQ 单聊/群聊消息事件后，已具备调用 MiniClaw 并被动回复的代码链路。
+- `miniclaw channels login --channel openclaw-weixin` 已接入 OpenClaw Weixin 登录流，扫码入口会直接交给 openclaw 处理。
+- `miniclaw weixin` 已具备最小 OpenClaw 后端协议骨架，可先启动并返回 `getUpdates`、`sendMessage`、`getUploadUrl`、`getConfig`、`sendTyping` 占位响应。
+- `miniclaw weixin send --to-user USER_ID -p "..."` 可把一条文本消息排入本地 Weixin 队列，供 `getUpdates` 拉取。
+- `miniclaw weixin reply --to-user USER_ID -p "..."` 可先跑一轮 MiniMax Agent，再把结果排入 Weixin 队列。
 - workspace 已自动初始化 `sessions`、`memory`、`state`、`cron`、`skills` 目录，以及 `AGENTS.md`、`USER.md`、`HEARTBEAT.md`。
 - 记忆系统已支持 `memory show|set|append|today|summarize|compact|prune|clear`，并把长期记忆、摘要和近期日记一起注入系统提示。
 - 已具备 QQ 白名单、消息去重、处理中占位回复、网页授权回调页面和事件日志落盘能力。
@@ -36,6 +40,11 @@ v test src
 ./miniclaw agent --workspace . -p "必须使用 exec 工具执行命令 printf 'exec-smoke'，并且只输出命令结果本身。"
 ./miniclaw gateway --once
 ./miniclaw gateway
+./miniclaw channels login --channel openclaw-weixin
+./miniclaw weixin --once
+./miniclaw weixin
+./miniclaw weixin send --to-user user-1 -p "hello"
+./miniclaw weixin reply --to-user user-1 -p "帮我总结一下今天的工作"
 ```
 
 如果你要把当前工作区快速部署到 `bl` 并同时启用内置 MCP，可以直接运行：
@@ -85,6 +94,10 @@ cp examples/miniclaw.config.example ~/.config/miniclaw/config
 - `qq_allow_users`: 允许触发机器人的单聊用户列表，多个值用英文逗号分隔；留空表示不限制。
 - `qq_allow_groups`: 允许触发机器人的群列表，多个值用英文逗号分隔；留空表示不限制。
 - `qq_processing_text`: 长任务开始处理时先回复的占位文案。
+- `weixin_host`: Weixin 后端协议服务绑定地址，默认是 `127.0.0.1`。
+- `weixin_port`: Weixin 后端协议服务端口，默认是 `18081`。
+- `weixin_base_path`: Weixin 后端协议基础路径，默认是 `/weixin`。
+- `weixin_processing_text`: Weixin 场景下的占位文案，默认与 QQ 一致。
 - `memory_recent_days`: 系统提示里最近日记默认回看天数，默认是 `2`。
 - `memory_recent_chars`: 系统提示里近期日记默认字符预算，默认是 `1600`。
 - `memory_summary_max_lines`: 记忆摘要最大行数，默认是 `20`。

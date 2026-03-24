@@ -29,6 +29,10 @@ pub mut:
 	qq_allow_users                string
 	qq_allow_groups               string
 	qq_processing_text            string
+	weixin_host                   string
+	weixin_port                   int
+	weixin_base_path              string
+	weixin_processing_text        string
 	max_tool_iterations           int
 	memory_recent_days            int
 	memory_recent_chars           int
@@ -69,6 +73,10 @@ fn default_config() Config {
 		qq_allow_users:                ''
 		qq_allow_groups:               ''
 		qq_processing_text:            '收到，处理中，请稍候。'
+		weixin_host:                   '127.0.0.1'
+		weixin_port:                   18081
+		weixin_base_path:              '/weixin'
+		weixin_processing_text:        '收到，处理中，请稍候。'
 		max_tool_iterations:           100
 		memory_recent_days:            2
 		memory_recent_chars:           1600
@@ -258,6 +266,22 @@ fn apply_config_value(mut config Config, key string, value string) {
 		'qq_processing_text' {
 			config.qq_processing_text = value
 		}
+		'weixin_host' {
+			config.weixin_host = value
+		}
+		'weixin_port' {
+			if parsed := strconv.atoi(value) {
+				if parsed > 0 && parsed <= 65535 {
+					config.weixin_port = parsed
+				}
+			}
+		}
+		'weixin_base_path' {
+			config.weixin_base_path = normalize_weixin_base_path(value)
+		}
+		'weixin_processing_text' {
+			config.weixin_processing_text = value
+		}
 		else {}
 	}
 }
@@ -319,6 +343,22 @@ fn apply_env_overrides(mut config Config) {
 	}
 	if value := os.getenv_opt('MINICLAW_QQ_PROCESSING_TEXT') {
 		config.qq_processing_text = value
+	}
+	if value := os.getenv_opt('MINICLAW_WEIXIN_HOST') {
+		config.weixin_host = value
+	}
+	if value := os.getenv_opt('MINICLAW_WEIXIN_PORT') {
+		if parsed := strconv.atoi(value) {
+			if parsed > 0 && parsed <= 65535 {
+				config.weixin_port = parsed
+			}
+		}
+	}
+	if value := os.getenv_opt('MINICLAW_WEIXIN_BASE_PATH') {
+		config.weixin_base_path = normalize_weixin_base_path(value)
+	}
+	if value := os.getenv_opt('MINICLAW_WEIXIN_PROCESSING_TEXT') {
+		config.weixin_processing_text = value
 	}
 	if value := os.getenv_opt('MINICLAW_TEMPERATURE') {
 		if parsed := strconv.atof64(value) {
@@ -420,7 +460,7 @@ fn write_default_config(config Config) ! {
 	// 把默认配置写入本地配置文件。
 	ensure_config_parent_dir(config.config_path)!
 	default_content :=
-		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'mcp_config_path=${config.mcp_config_path}', 'api_key=', 'base_url=${config.base_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'enable_mcp=${config.enable_mcp}', 'mcp_base_path=${config.mcp_base_path}', 'mcp_resource_mode=${config.mcp_resource_mode}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}', 'memory_recent_days=${config.memory_recent_days}', 'memory_recent_chars=${config.memory_recent_chars}', 'memory_summary_max_lines=${config.memory_summary_max_lines}', 'memory_summary_max_chars=${config.memory_summary_max_chars}', 'memory_daily_entry_max_chars=${config.memory_daily_entry_max_chars}', 'memory_significance_threshold=${config.memory_significance_threshold}', 'memory_prune_keep_days=${config.memory_prune_keep_days}'].join('\n') +
+		['# MiniClaw config', 'home_dir=${config.home_dir}', 'workspace=${config.workspace}', 'mcp_config_path=${config.mcp_config_path}', 'api_key=', 'base_url=${config.base_url}', 'model=${config.model}', 'temperature=${config.temperature}', 'max_tokens=${config.max_tokens}', 'request_timeout=${config.request_timeout}', 'enable_mcp=${config.enable_mcp}', 'mcp_base_path=${config.mcp_base_path}', 'mcp_resource_mode=${config.mcp_resource_mode}', 'qq_app_id=', 'qq_token=', 'qq_app_secret=', 'qq_api_base=${config.qq_api_base}', 'qq_webhook_host=${config.qq_webhook_host}', 'qq_webhook_port=${config.qq_webhook_port}', 'qq_webhook_path=${config.qq_webhook_path}', 'qq_auth_callback_path=${config.qq_auth_callback_path}', 'qq_allow_users=${config.qq_allow_users}', 'qq_allow_groups=${config.qq_allow_groups}', 'qq_processing_text=${config.qq_processing_text}', 'weixin_host=${config.weixin_host}', 'weixin_port=${config.weixin_port}', 'weixin_base_path=${config.weixin_base_path}', 'weixin_processing_text=${config.weixin_processing_text}', 'memory_recent_days=${config.memory_recent_days}', 'memory_recent_chars=${config.memory_recent_chars}', 'memory_summary_max_lines=${config.memory_summary_max_lines}', 'memory_summary_max_chars=${config.memory_summary_max_chars}', 'memory_daily_entry_max_chars=${config.memory_daily_entry_max_chars}', 'memory_significance_threshold=${config.memory_significance_threshold}', 'memory_prune_keep_days=${config.memory_prune_keep_days}'].join('\n') +
 		'\n'
 	os.write_file(config.config_path, default_content)!
 }
