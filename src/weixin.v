@@ -26,7 +26,7 @@ fn start_weixin_gateway_server(config Config) ! {
 }
 
 fn (handler WeixinGatewayHandler) handle(req http.Request) http.Response {
-	// 按 OpenClaw 的 Weixin 后端协议分发请求。
+	// 按 MiniClaw 的 Weixin 后端协议分发请求。
 	request_path := request_path_only(req.url)
 	base_path := normalize_weixin_base_path(handler.config.weixin_base_path)
 	if !request_path.starts_with(base_path) {
@@ -170,7 +170,7 @@ struct WeixinInboundMessage {
 }
 
 fn parse_weixin_inbound_message(request_body string) WeixinInboundMessage {
-	// 兼容顶层、msg 和 d 三种输入包裹，尽量贴近真实 Weixin/OpenClaw 消息结构。
+	// 兼容顶层、msg 和 d 三种输入包裹，尽量贴近真实 Weixin 消息结构。
 	mut candidate := request_body
 	for key in ['msg', 'd', 'message', 'payload'] {
 		object_value := extract_json_object_value(request_body, key)

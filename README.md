@@ -1,6 +1,6 @@
 # MiniClaw
 
-用 V 语言复刻 PicoClaw 的实用子集，直接面向 MiniMax + QQ 场景，并逐步补齐 Weixin/OpenClaw 接入。
+用 V 语言复刻 PicoClaw 的实用子集，直接面向 MiniMax + QQ 场景，并逐步补齐 Weixin 接入。
 
 当前策略不是全量追平 PicoClaw，而是先做一个能稳定跑起来、能在 QQ 上收发消息、能调用 MiniMax 完成多轮工具型 Agent 任务的最小可用版本。
 
@@ -19,8 +19,9 @@
 - `miniclaw gateway --once` 已支持真实 QQ bootstrap：获取 access token、读取 bot profile、落盘状态。
 - `miniclaw gateway` 已支持启动本地 QQ webhook 服务，完成回调验证签名和事件 ACK。
 - webhook 收到 QQ 单聊/群聊消息事件后，已具备调用 MiniClaw 并被动回复的代码链路。
-- `miniclaw channels login --channel openclaw-weixin` 已接入 OpenClaw Weixin 登录流，扫码入口会直接交给 openclaw 处理。
-- `miniclaw weixin` 已具备最小 OpenClaw 后端协议骨架，可先启动并返回 `getUpdates`、`sendMessage`、`getUploadUrl`、`getConfig`、`sendTyping` 占位响应。
+- `miniclaw channels login --channel weixin` 已接入本地 Weixin 登录流，会写出一张 SVG 二维码图片和 pairing URL。
+- `miniclaw channels login --channel weixin` 输出的 `miniclaw://weixin/login?...` 是本地配对会话标识，不是网页链接。
+- `miniclaw weixin` 已具备最小本地后端协议骨架，可先启动并返回 `getUpdates`、`sendMessage`、`getUploadUrl`、`getConfig`、`sendTyping` 占位响应。
 - `miniclaw weixin send --to-user USER_ID -p "..."` 可把一条文本消息排入本地 Weixin 队列，供 `getUpdates` 拉取。
 - `miniclaw weixin reply --to-user USER_ID -p "..."` 可先跑一轮 MiniMax Agent，再把结果排入 Weixin 队列。
 - workspace 已自动初始化 `sessions`、`memory`、`state`、`cron`、`skills` 目录，以及 `AGENTS.md`、`USER.md`、`HEARTBEAT.md`。
@@ -40,7 +41,7 @@ v test src
 ./miniclaw agent --workspace . -p "必须使用 exec 工具执行命令 printf 'exec-smoke'，并且只输出命令结果本身。"
 ./miniclaw gateway --once
 ./miniclaw gateway
-./miniclaw channels login --channel openclaw-weixin
+./miniclaw channels login --channel weixin
 ./miniclaw weixin --once
 ./miniclaw weixin
 ./miniclaw weixin send --to-user user-1 -p "hello"

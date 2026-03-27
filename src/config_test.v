@@ -39,12 +39,12 @@ fn test_parse_config_content_applies_weixin_settings() {
 	content := '
 weixin_host=0.0.0.0
 weixin_port=19081
-weixin_base_path=openclaw/weixin
+weixin_base_path=weixin
 weixin_processing_text=处理中
 '
 	config := parse_config_content(content, base)
 	assert config.weixin_host == '0.0.0.0'
 	assert config.weixin_port == 19081
-	assert config.weixin_base_path == '/openclaw/weixin'
+	assert config.weixin_base_path == '/weixin'
 	assert config.weixin_processing_text == '处理中'
 }
